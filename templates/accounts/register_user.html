@@ -1,0 +1,197 @@
+{% extends 'base.html' %}
+
+{% block title %}User Registration - Adwise{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center py-4">
+    <div class="col-md-7 col-lg-6">
+        <div class="card shadow-sm border-0 rounded-3 p-4">
+
+            <!-- Card Header -->
+            <div class="text-center mb-4">
+                <h3 class="fw-bold m-0 text-dark">Create User Account</h3>
+                <p class="text-muted small mt-1">Sign up to connect with verified experts</p>
+            </div>
+
+            <!-- Registration Form -->
+            <form method="POST" action="{% url 'register_user' %}" novalidate>
+                {% csrf_token %}
+
+                <!-- Non-Field Errors -->
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger py-2 mb-3">
+                        {% for error in form.non_field_errors %}
+                            <p class="mb-0 small">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <!-- First Name & Last Name -->
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label for="{{ form.first_name.id_for_label }}" class="form-label fw-semibold text-secondary small">First Name</label>
+                        {{ form.first_name }}
+                        {% if form.first_name.errors %}
+                            <div class="text-danger small mt-1">{{ form.first_name.errors|striptags }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label for="{{ form.last_name.id_for_label }}" class="form-label fw-semibold text-secondary small">Last Name</label>
+                        {{ form.last_name }}
+                        {% if form.last_name.errors %}
+                            <div class="text-danger small mt-1">{{ form.last_name.errors|striptags }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Email Address -->
+                <div class="mb-3">
+                    <label for="{{ form.email.id_for_label }}" class="form-label fw-semibold text-secondary small">Email Address</label>
+                    {{ form.email }}
+                    {% if form.email.errors %}
+                        <div class="text-danger small mt-1">{{ form.email.errors|striptags }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Phone Number -->
+                <div class="mb-3">
+                    <label for="{{ form.phone_number.id_for_label }}" class="form-label fw-semibold text-secondary small">Phone Number</label>
+                    {{ form.phone_number }}
+                    {% if form.phone_number.errors %}
+                        <div class="text-danger small mt-1">{{ form.phone_number.errors|striptags }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Location Row: State, District, City -->
+                <div class="row g-2 mb-3">
+                    <div class="col-md-4">
+                        <label for="id_state" class="form-label fw-semibold text-secondary small">State</label>
+                        {{ form.state }}
+                        {% if form.state.errors %}
+                            <div class="text-danger small mt-1">{{ form.state.errors|striptags }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-4">
+                        <label for="id_district" class="form-label fw-semibold text-secondary small">District</label>
+                        {{ form.district }}
+                        {% if form.district.errors %}
+                            <div class="text-danger small mt-1">{{ form.district.errors|striptags }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-4">
+                        <label for="id_city" class="form-label fw-semibold text-secondary small">City</label>
+                        {{ form.city }}
+                        {% if form.city.errors %}
+                            <div class="text-danger small mt-1">{{ form.city.errors|striptags }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Password -->
+                <div class="mb-3">
+                    <label for="{{ form.password.id_for_label }}" class="form-label fw-semibold text-secondary small">Password</label>
+                    {{ form.password }}
+                    {% if form.password.errors %}
+                        <div class="text-danger small mt-1">{{ form.password.errors|striptags }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Confirm Password -->
+                <div class="mb-3">
+                    <label for="{{ form.confirm_password.id_for_label }}" class="form-label fw-semibold text-secondary small">Confirm Password</label>
+                    {{ form.confirm_password }}
+                    {% if form.confirm_password.errors %}
+                        <div class="text-danger small mt-1">{{ form.confirm_password.errors|striptags }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Submit Button -->
+                <div class="d-grid mt-4">
+                    <button type="submit" class="btn btn-primary btn-lg fw-bold fs-6 py-2">
+                        Create Account
+                    </button>
+                </div>
+            </form>
+
+            <!-- Card Footer Links -->
+            <div class="text-center mt-4 pt-3 border-top">
+                <p class="mb-1 text-muted small">
+                    Already have an account? 
+                    <a href="{% url 'login' %}" class="text-primary text-decoration-none fw-semibold">Log In</a>
+                </p>
+                <p class="mb-0 text-muted small">
+                    Are you an expert? 
+                    <a href="{% url 'expert_register_step1' %}" class="text-primary text-decoration-none fw-semibold">Register as Expert</a>
+                </p>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- Dynamic AJAX Dropdown JavaScript -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const stateSelect = document.getElementById("id_state");
+    const districtSelect = document.getElementById("id_district");
+    const citySelect = document.getElementById("id_city");
+
+    if (stateSelect) {
+        stateSelect.addEventListener("change", function () {
+            const stateId = this.value;
+
+            // Clear existing options
+            districtSelect.innerHTML = '<option value="">Select District</option>';
+            citySelect.innerHTML = '<option value="">Select City</option>';
+
+            if (!stateId) return;
+
+            // Fetch Districts using Django URL tag
+            fetch("{% url 'get_districts' %}?state_id=" + stateId)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error("HTTP error " + response.status);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    data.forEach(item => {
+                        const option = document.createElement("option");
+                        option.value = item.id;
+                        option.textContent = item.name;
+                        districtSelect.appendChild(option);
+                    });
+                })
+                .catch(err => console.error("Error loading districts:", err));
+        });
+    }
+
+    if (districtSelect) {
+        districtSelect.addEventListener("change", function () {
+            const districtId = this.value;
+
+            citySelect.innerHTML = '<option value="">Select City</option>';
+
+            if (!districtId) return;
+
+            // Fetch Cities using Django URL tag
+            fetch("{% url 'get_cities' %}?district_id=" + districtId)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error("HTTP error " + response.status);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    data.forEach(item => {
+                        const option = document.createElement("option");
+                        option.value = item.id;
+                        option.textContent = item.name;
+                        citySelect.appendChild(option);
+                    });
+                })
+                .catch(err => console.error("Error loading cities:", err));
+        });
+    }
+});
+{% endblock %}

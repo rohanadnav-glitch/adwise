@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Adwise - Expert Consultation Platform{% endblock %}</title>
+
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .main-content {
+            flex: 1;
+        }
+        .navbar-brand {
+            font-weight: 800;
+            font-size: 1.5rem;
+            letter-spacing: -0.5px;
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm py-3 mb-4">
+        <div class="container">
+            <a class="navbar-brand text-primary" href="{% if user.is_authenticated and user.role == 'EXPERT' %}{% url 'expert_dashboard' %}{% else %}{% url 'user_dashboard' %}{% endif %}">
+                <i class="fa-solid fa-graduation-cap me-1"></i>Adwise
+            </a>
+
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    {% if user.is_authenticated %}
+                        {% if user.role == 'USER' %}
+                            <li class="nav-item">
+                                <a class="nav-link" href="{% url 'search_experts' %}"><i class="fa-solid fa-magnifying-glass me-1"></i> Find Experts</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{% url 'user_bookings' %}"><i class="fa-solid fa-calendar-check me-1"></i> My Bookings</a>
+                            </li>
+                        {% elif user.role == 'EXPERT' %}
+                            <li class="nav-item">
+                                <a class="nav-link" href="{% url 'schedule_manager' %}"><i class="fa-solid fa-clock me-1"></i> Schedule Availability</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{% url 'expert_requests' %}"><i class="fa-solid fa-list-check me-1"></i> Client Requests</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{% url 'edit_expert_profile' %}"><i class="fa-solid fa-gear me-1"></i> Rates & Profile</a>
+                            </li>
+                        {% endif %}
+                    {% endif %}
+                </ul>
+
+                <!-- User Greeting & Logout -->
+                <div class="d-flex align-items-center gap-3">
+                    {% if user.is_authenticated %}
+                        {% if user.role == 'EXPERT' and user.expert_profile %}
+                            <!-- Clicking Expert Name redirects to expert_detail view using expert_detail URL pattern -->
+                            <a href="{% url 'expert_detail' user.expert_profile.id %}" class="text-decoration-none text-light fw-bold me-2">
+                                <i class="fa-solid fa-circle-user text-primary me-1 fs-5"></i>
+                                Hi, {{ user.first_name|default:user.username }}
+                            </a>
+                        {% else %}
+                            <span class="text-light me-2">
+                                <i class="fa-solid fa-user text-info me-1"></i>
+                                Hi, {{ user.first_name|default:user.username }}
+                            </span>
+                        {% endif %}
+
+                        <a href="{% url 'logout' %}" class="btn btn-outline-danger btn-sm fw-bold">
+                            <i class="fa-solid fa-right-from-bracket me-1"></i>Logout
+                        </a>
+                    {% else %}
+                        <a href="{% url 'login' %}" class="btn btn-outline-light btn-sm me-2">Login</a>
+                        <a href="{% url 'register_user' %}" class="btn btn-primary btn-sm fw-bold">Register</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Body Container -->
+    <main class="container main-content mb-5">
+        <!-- Django Flash Messages -->
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show shadow-sm" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-top py-3 mt-auto text-center text-muted small">
+        <div class="container">
+            <p class="m-0">&copy; 2026 Adwise Expert Consultation Platform. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

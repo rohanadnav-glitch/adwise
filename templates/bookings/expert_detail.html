@@ -1,0 +1,147 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ expert.user.get_full_name }} - Expert Profile | Adwise{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- LEFT COLUMN: Expert Profile Card & Client Reviews -->
+    <div class="col-md-5 mb-4">
+        
+        <!-- Profile Overview Card -->
+        <div class="card shadow-sm border-0 p-4 mb-4">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <div>
+                    <h3 class="fw-bold mb-1">
+                        {{ expert.user.get_full_name }}
+                        {% if expert.is_verified %}
+                            <span class="text-primary fs-5 ms-1" title="Verified Expert">
+                                <i class="fa-solid fa-circle-check"></i>
+                            </span>
+                        {% endif %}
+                    </h3>
+                    <span class="badge bg-primary text-wrap">{{ expert.category.name }} &rarr; {{ expert.subcategory.name }}</span>
+                </div>
+            </div>
+
+            <!-- STAR RATING BADGE -->
+            <div class="my-3">
+                {% if expert.average_rating > 0 %}
+                    <span class="badge bg-warning text-dark fs-6 px-3 py-2">
+                        <i class="fa-solid fa-star me-1"></i> {{ expert.average_rating }} / 5.0
+                    </span>
+                    <span class="text-muted small ms-2">({{ expert.total_reviews_count }} review{% if expert.total_reviews_count > 1 %}s{% endif %})</span>
+                {% else %}
+                    <span class="badge bg-light text-muted border px-3 py-2">
+                        <i class="fa-regular fa-star me-1"></i> New Expert (No reviews yet)
+                    </span>
+                {% endif %}
+            </div>
+
+            <hr class="text-muted">
+
+            <!-- Professional Info -->
+            <div class="mb-3">
+                <p class="mb-2"><i class="fa-solid fa-graduation-cap text-primary me-2"></i><strong>Qualification:</strong> {{ expert.qualification }}</p>
+                <p class="mb-2"><i class="fa-solid fa-briefcase text-primary me-2"></i><strong>Experience:</strong> {{ expert.experience_years }} Years</p>
+                <p class="mb-2 text-success fw-bold"><i class="fa-solid fa-tag text-success me-2"></i><strong>Consultation Fee:</strong> ₹{{ expert.hourly_rate }} / 60 mins</p>
+                <p class="mb-0"><i class="fa-solid fa-location-dot text-primary me-2"></i><strong>Location:</strong> {{ expert.city.name }}, {{ expert.district.name }}, {{ expert.state.name }}</p>
+            </div>
+
+            <hr class="text-muted">
+
+            <!-- About / Bio -->
+            <h6 class="fw-bold text-dark"><i class="fa-solid fa-user me-2 text-primary"></i>About Expert</h6>
+            <p class="text-muted small mb-0" style="white-space: pre-line;">{{ expert.bio }}</p>
+
+            <!-- EDIT PROFILE BUTTON (Visible when logged in expert views their own profile) -->
+            {% if user.is_authenticated and user == expert.user %}
+                <div class="mt-4 pt-3 border-top d-grid">
+                    <a href="{% url 'edit_expert_profile' %}" class="btn btn-outline-primary fw-bold py-2">
+                        <i class="fa-solid fa-pen-to-square me-2"></i>Edit Profile & Rates
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- CLIENT REVIEWS SECTION -->
+        <div class="card shadow-sm border-0 p-4">
+            <h5 class="fw-bold mb-3">
+                <i class="fa-solid fa-comments text-primary me-2"></i>Client Feedback & Reviews
+            </h5>
+
+            {% if expert.reviews.all %}
+                <div class="review-list">
+                    {% for review in expert.reviews.all %}
+                        <div class="border-bottom pb-3 mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <strong class="text-dark">{{ review.user.get_full_name|default:review.user.username }}</strong>
+                                <span class="text-warning small fw-bold">
+                                    <i class="fa-solid fa-star"></i> {{ review.rating }}/5
+                                </span>
+                            </div>
+                            <p class="text-muted small mb-1">{{ review.comment }}</p>
+                            <small class="text-secondary fs-7" style="font-size: 0.75rem;">
+                                Posted on {{ review.created_at|date:"d M Y" }}
+                            </small>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-3">
+                    <p class="text-muted small m-0"><i class="fa-regular fa-comment-dots fs-4 d-block mb-2 text-secondary"></i>No client reviews submitted for this expert yet.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- RIGHT COLUMN: Available Consultation Slots -->
+    <div class="col-md-7 mb-4">
+        <div class="card shadow-sm border-0 p-4">
+            <h4 class="fw-bold mb-3">
+                <i class="fa-regular fa-calendar-check text-primary me-2"></i>Available Consultation Slots
+            </h4>
+
+            {% if available_slots %}
+                <div class="row row-cols-1 row-cols-md-2 g-3">
+                    {% for slot in available_slots %}
+                        <div class="col">
+                            <div class="card h-100 border-primary border-opacity-25 bg-light p-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="badge bg-info text-dark fw-bold">
+                                        <i class="fa-regular fa-calendar me-1"></i> {{ slot.date|date:"D, d M Y" }}
+                                    </span>
+                                </div>
+                                <p class="mb-3 text-dark fw-semibold">
+                                    <i class="fa-regular fa-clock me-1 text-primary"></i>
+                                    {{ slot.start_time|time:"h:i A" }} - {{ slot.end_time|time:"h:i A" }}
+                                </p>
+
+                                {% if user.is_authenticated %}
+                                    {% if user.role == 'USER' %}
+                                        <a href="{% url 'request_session' slot.id %}" class="btn btn-primary btn-sm w-100 fw-bold shadow-sm">
+                                            Request Session
+                                        </a>
+                                    {% else %}
+                                        <button class="btn btn-secondary btn-sm w-100" disabled>
+                                            Experts cannot request sessions
+                                        </button>
+                                    {% endif %}
+                                {% else %}
+                                    <a href="{% url 'login' %}?next={{ request.path }}" class="btn btn-outline-primary btn-sm w-100 fw-bold">
+                                        Login to Book
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="alert alert-info border-0 shadow-sm mt-2 mb-0">
+                    <i class="fa-solid fa-circle-info me-2"></i>
+                    This expert currently has no open consultation slots available. Please check back later.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow-sm border-0 p-4">
+            <h3 class="fw-bold text-center mb-3">Secure Payment Checkout</h3>
+            <div class="bg-light p-3 rounded mb-4">
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Expert:</span>
+                    <strong>{{ booking.expert.user.get_full_name }}</strong>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Session Date:</span>
+                    <strong>{{ booking.slot.date|date:"D, d M Y" }}</strong>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Time Slot:</span>
+                    <strong>{{ booking.slot.start_time|time:"h:i A" }} - {{ booking.slot.end_time|time:"h:i A" }}</strong>
+                </div>
+                <hr>
+                <div class="d-flex justify-content-between fs-5 fw-bold text-success">
+                    <span>Total Fee:</span>
+                    <span>₹{{ booking.expert.hourly_rate }}</span>
+                </div>
+            </div>
+
+            <form method="POST">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Card / UPI Payment Simulation</label>
+                    <input type="text" class="form-control" value="4111 •••• •••• 1111 (Demo Mode)" disabled>
+                </div>
+                <button type="submit" class="btn btn-success w-100 fw-bold fs-5 py-2">Confirm & Pay ₹{{ booking.expert.hourly_rate }}</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

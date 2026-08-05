@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+
+{% block title %}Schedule Availability - Adwise{% endblock %}
+
+{% block content %}
+<!-- Header Section -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h3 class="fw-bold m-0"><i class="fa-solid fa-clock text-primary me-2"></i>My Consultation Schedule</h3>
+        <p class="text-muted m-0 mt-1">
+            Current Fee: 
+            <span class="badge bg-success fs-6">
+                ₹{{ expert_profile.hourly_rate }}/hr
+            </span>
+        </p>
+    </div>
+    <a href="{% url 'edit_expert_profile' %}" class="btn btn-outline-primary btn-sm fw-bold">
+        <i class="fa-solid fa-pen-to-square me-1"></i> Update Fee & Bio
+    </a>
+</div>
+
+<div class="row g-4">
+    <!-- Left Column: Add Available Slot Form -->
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0 p-4">
+            <h5 class="fw-bold mb-3"><i class="fa-solid fa-plus-circle text-primary me-1"></i>Add Available Slot</h5>
+            
+            <form method="POST" action="{% url 'schedule_manager' %}">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Date</label>
+                    <input type="date" name="date" class="form-control" required>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Start Time</label>
+                    <input type="time" name="start_time" class="form-control" required>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">End Time</label>
+                    <input type="time" name="end_time" class="form-control" required>
+                </div>
+                
+                <button type="submit" class="btn btn-primary w-100 fw-bold">
+                    <i class="fa-solid fa-plus me-1"></i> Add Schedule Slot
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Right Column: Upcoming Schedules Table -->
+    <div class="col-md-8">
+        <div class="card shadow-sm border-0 p-4">
+            <h5 class="fw-bold mb-3"><i class="fa-solid fa-calendar-days text-primary me-1"></i>Upcoming Schedules</h5>
+            
+            {% if slots %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Date</th>
+                                <th>Time Range</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for slot in slots %}
+                            <tr>
+                                <td><strong>{{ slot.date|date:"D, d M Y" }}</strong></td>
+                                <td>{{ slot.start_time|time:"h:i A" }} - {{ slot.end_time|time:"h:i A" }}</td>
+                                <td>
+                                    {% if slot.is_booked %}
+                                        <span class="badge bg-danger">Booked</span>
+                                    {% else %}
+                                        <span class="badge bg-success">Available</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if slot.is_booked %}
+                                        <span class="text-muted small">Locked</span>
+                                    {% else %}
+                                        <a href="{% url 'delete_slot' slot.id %}" class="btn btn-outline-danger btn-sm" onclick="return confirm('Are you sure you want to delete this available slot?');">
+                                            <i class="fa-solid fa-trash"></i> Delete
+                                        </a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-muted m-0">You haven't added any schedule slots yet. Use the form on the left to add your availability.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

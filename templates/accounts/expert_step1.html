@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow-sm border-0 p-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h3 class="fw-bold m-0">Basic Account Info</h3>
+                <span class="badge bg-primary fs-6">Step 1 of 3</span>
+            </div>
+            <form method="POST">
+                {% csrf_token %}
+                <div class="row">
+                    <div class="col-md-6 mb-3">{{ form.first_name }}</div>
+                    <div class="col-md-6 mb-3">{{ form.last_name }}</div>
+                </div>
+                <div class="mb-3">{{ form.email }}{{ form.email.errors }}</div>
+                <div class="mb-3">{{ form.phone_number }}{{ form.phone_number.errors }}</div>
+                <div class="mb-3">{{ form.password }}</div>
+                <div class="mb-3">{{ form.confirm_password }}{{ form.confirm_password.errors }}</div>
+                <button type="submit" class="btn btn-primary w-100 fw-bold">Next: Professional Details &rarr;</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

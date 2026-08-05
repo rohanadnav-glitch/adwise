@@ -1,0 +1,511 @@
+accont forms.py
+
+
+
+from django import forms
+from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
+from apps.locations.models import State, District, City
+from apps.categories.models import Category, SubCategory
+from .models import ExpertProfile
+
+User = get_user_model()
+
+
+# ==========================================
+# 1. USER REGISTRATION FORM
+# ==========================================
+class UserRegistrationForm(forms.ModelForm):
+    first_name = forms.CharField(
+        max_length=50, 
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'First Name'})
+    )
+    last_name = forms.CharField(
+        max_length=50, 
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Last Name'})
+    )
+    email = forms.EmailField(
+        widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Email Address'})
+    )
+    phone_number = forms.CharField(
+        max_length=15, 
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Phone Number'})
+    )
+    password = forms.CharField(
+        widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Password'})
+    )
+    confirm_password = forms.CharField(
+        widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Confirm Password'})
+    )
+
+    # Address / Location Fields
+    state = forms.ModelChoiceField(
+        queryset=State.objects.all(), 
+        required=True, 
+        widget=forms.Select(attrs={'class': 'form-select', 'id': 'id_state'})
+    )
+    district = forms.ModelChoiceField(
+        queryset=District.objects.none(), 
+        required=True, 
+        widget=forms.Select(attrs={'class': 'form-select', 'id': 'id_district'})
+    )
+    city = forms.ModelChoiceField(
+        queryset=City.objects.none(), 
+        required=True, 
+        widget=forms.Select(attrs={'class': 'form-select', 'id': 'id_city'})
+    )
+
+    class Meta:
+        model = User
+        fields = ['first_name', 'last_name', 'email', 'phone_number']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Dynamically populate dependent fields if form is bound with POST data
+        if 'state' in self.data:
+            try:
+                state_id = int(self.data.get('state'))
+                self.fields['district'].queryset = District.objects.filter(state_id=state_id)
+            except (ValueError, TypeError):
+                pass
+        if 'district' in self.data:
+            try:
+                district_id = int(self.data.get('district'))
+                self.fields['city'].queryset = City.objects.filter(district_id=district_id)
+            except (ValueError, TypeError):
+                pass
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        if User.objects.filter(email__iexact=email).exists():
+            raise ValidationError("An account with this email address already exists.")
+        return email.lower()
+
+    def clean_phone_number(self):
+        phone_number = self.cleaned_data.get('phone_number')
+        if User.objects.filter(phone_number=phone_number).exists():
+            raise ValidationError("An account with this phone number already exists.")
+        return phone_number
+
+    def clean(self):
+        cleaned_data = super().clean()
+        password = cleaned_data.get("password")
+        confirm_password = cleaned_data.get("confirm_password")
+        if password and confirm_password and password != confirm_password:
+            self.add_error('confirm_password', "Passwords do not match.")
+        return cleaned_data
+
+
+# ==========================================
+# 2. EXPERT WIZARD FORMS
+# ==========================================
+
+# Step 1: Account Basics
+class ExpertStep1Form(forms.Form):
+    first_name = forms.CharField(
+        max_length=50, 
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'First Name'})
+    )
+    last_name = forms.CharField(
+        max_length=50, 
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Last Name'})
+    )
+    email = forms.EmailField(
+        widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Email Address'})
+    )
+    phone_number = forms.CharField(
+        max_length=15, 
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Phone Number'})
+    )
+    password = forms.CharField(
+        widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Password'})
+    )
+    confirm_password = forms.CharField(
+        widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Confirm Password'})
+    )
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        if User.objects.filter(email__iexact=email).exists():
+            raise ValidationError("An account with this email address already exists.")
+        return email.lower()
+
+    def clean_phone_number(self):
+        phone = self.cleaned_data.get('phone_number')
+        if User.objects.filter(phone_number=phone).exists():
+            raise ValidationError("An account with this phone number already exists.")
+        return phone
+
+    def clean(self):
+        cleaned_data = super().clean()
+        password = cleaned_data.get("password")
+        confirm_password = cleaned_data.get("confirm_password")
+        if password and confirm_password and password != confirm_password:
+            self.add_error('confirm_password', "Passwords do not match.")
+        return cleaned_data
+
+
+# Step 2: Professional Credentials, Pricing & Location
+class ExpertStep2Form(forms.Form):
+    category = forms.ModelChoiceField(
+        queryset=Category.objects.all(),
+        widget=forms.Select(attrs={'class': 'form-select', 'id': 'id_category'})
+    )
+    subcategory = forms.ModelChoiceField(
+        queryset=SubCategory.objects.none(),
+        widget=forms.Select(attrs={'class': 'form-select', 'id': 'id_subcategory'})
+    )
+    qualification = forms.CharField(
+        max_length=255,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., M.Tech, Ph.D'})
+    )
+    experience_years = forms.IntegerField(
+        min_value=0,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Years of Experience'})
+    )
+    hourly_rate = forms.DecimalField(
+        max_digits=10, decimal_places=2,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'e.g. 500'})
+    )
+    state = forms.ModelChoiceField(
+        queryset=State.objects.all(),
+        widget=forms.Select(attrs={'class': 'form-select', 'id': 'id_state'})
+    )
+    district = forms.ModelChoiceField(
+        queryset=District.objects.none(),
+        widget=forms.Select(attrs={'class': 'form-select', 'id': 'id_district'})
+    )
+    city = forms.ModelChoiceField(
+        queryset=City.objects.none(),
+        widget=forms.Select(attrs={'class': 'form-select', 'id': 'id_city'})
+    )
+    bio = forms.CharField(
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Describe your professional experience...'})
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # 1. Populate Subcategory queryset on POST submit
+        if 'category' in self.data:
+            try:
+                category_id = int(self.data.get('category'))
+                self.fields['subcategory'].queryset = SubCategory.objects.filter(category_id=category_id)
+            except (ValueError, TypeError):
+                pass
+
+        # 2. Populate District queryset on POST submit
+        if 'state' in self.data:
+            try:
+                state_id = int(self.data.get('state'))
+                self.fields['district'].queryset = District.objects.filter(state_id=state_id)
+            except (ValueError, TypeError):
+                pass
+
+        # 3. Populate City queryset on POST submit
+        if 'district' in self.data:
+            try:
+                district_id = int(self.data.get('district'))
+                self.fields['city'].queryset = City.objects.filter(district_id=district_id)
+            except (ValueError, TypeError):
+                pass
+
+    # Refined Terminology
+    hourly_rate = forms.DecimalField(
+        max_digits=8, 
+        decimal_places=2, 
+        label="Consultation Fee (per 60 mins)",
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'e.g. 500'}),
+        help_text="Set your standard fee for a 1-hour consultation session."
+    )
+    bio = forms.CharField(
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 4, 'placeholder': 'Describe your professional experience and expertise...'})
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if 'category' in self.data:
+            try:
+                category_id = int(self.data.get('category'))
+                self.fields['subcategory'].queryset = SubCategory.objects.filter(category_id=category_id)
+            except (ValueError, TypeError):
+                pass
+        if 'state' in self.data:
+            try:
+                state_id = int(self.data.get('state'))
+                self.fields['district'].queryset = District.objects.filter(state_id=state_id)
+            except (ValueError, TypeError):
+                pass
+        if 'district' in self.data:
+            try:
+                district_id = int(self.data.get('district'))
+                self.fields['city'].queryset = City.objects.filter(district_id=district_id)
+            except (ValueError, TypeError):
+                pass
+
+
+# ==========================================
+# 3. LOGIN FORM
+# ==========================================
+class LoginForm(forms.Form):
+    username = forms.CharField(
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Username or Email Address'})
+    )
+    password = forms.CharField(
+        widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Password'})
+    )
+
+
+class ExpertProfileUpdateForm(forms.ModelForm):
+    hourly_rate = forms.DecimalField(
+        max_digits=10, 
+        decimal_places=2,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Enter your session fee in ₹',
+            'min': '0'
+        }),
+        help_text="Update your hourly consultation fee (in ₹)"
+    )
+    qualification = forms.CharField(
+        widget=forms.TextInput(attrs={'class': 'form-control'})
+    )
+    experience_years = forms.IntegerField(
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'min': '0'})
+    )
+    bio = forms.CharField(
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 4})
+    )
+
+    class Meta:
+        model = ExpertProfile
+        fields = ['hourly_rate', 'qualification', 'experience_years', 'bio']
+
+
+
+
+
+viwes.py accounts
+
+
+@transaction.atomic
+def register_user_view(request):
+    if request.user.is_authenticated:
+        return redirect_by_role(request.user)
+
+    if request.method == 'POST':
+        form = UserRegistrationForm(request.POST)
+        if form.is_valid():
+            try:
+                user = CustomUser.objects.create_user(
+                    username=form.cleaned_data['email'],
+                    email=form.cleaned_data['email'],
+                    password=form.cleaned_data['password'],
+                    first_name=form.cleaned_data['first_name'],
+                    last_name=form.cleaned_data['last_name'],
+                    phone_number=form.cleaned_data['phone_number'],
+                    role=UserRole.USER
+                )
+                UserProfile.objects.create(
+                    user=user,
+                    state=form.cleaned_data['state'],
+                    district=form.cleaned_data['district'],
+                    city=form.cleaned_data['city']
+                )
+                login(request, user)
+                messages.success(request, "Account created successfully!")
+                return redirect('user_dashboard')
+            except Exception as e:
+                messages.error(request, f"An error occurred during account creation: {str(e)}")
+    else:
+        form = UserRegistrationForm()
+
+    return render(request, 'accounts/register_user.html', {'form': form})
+
+
+# ==========================================
+# EXPERT 3-STEP WIZARD VIEWS
+# ==========================================
+
+# Step 1: Basics
+def expert_register_step1(request):
+    if request.user.is_authenticated:
+        return redirect_by_role(request.user)
+
+    step1_data = request.session.get('expert_wizard_step1', {})
+    
+    if request.method == 'POST':
+        form = ExpertStep1Form(request.POST)
+        if form.is_valid():
+            request.session['expert_wizard_step1'] = form.cleaned_data
+            return redirect('expert_register_step2')
+    else:
+        form = ExpertStep1Form(initial=step1_data)
+
+    return render(request, 'accounts/expert_step1.html', {'form': form})
+
+
+# Step 2: Details, Pricing & Location
+def expert_register_step2(request):
+    # 1. Verify Step 1 session data exists
+    if 'expert_wizard_step1' not in request.session:
+        messages.warning(request, "Please complete Step 1 first.")
+        return redirect('expert_register_step1')
+
+    if request.method == 'POST':
+        form = ExpertStep2Form(request.POST)
+        if form.is_valid():
+            cleaned = form.cleaned_data
+            
+            # Save Step 2 data to session
+            request.session['expert_wizard_step2'] = {
+                'category_id': cleaned['category'].id,
+                'subcategory_id': cleaned['subcategory'].id,
+                'qualification': cleaned['qualification'],
+                'experience_years': cleaned['experience_years'],
+                'hourly_rate': str(cleaned['hourly_rate']),
+                'state_id': cleaned['state'].id,
+                'district_id': cleaned['district'].id,
+                'city_id': cleaned['city'].id,
+                'bio': cleaned['bio'],
+            }
+            # Explicitly mark session as modified
+            request.session.modified = True
+            
+            return redirect('expert_register_step3')
+        else:
+            # Print form errors in VS Code terminal for debugging
+            print("Form errors:", form.errors)
+    else:
+        form = ExpertStep2Form()
+
+    # Re-render step 2 page with form validation errors shown
+    return render(request, 'accounts/expert_step2.html', {'form': form})
+
+
+
+
+
+
+
+registeruser.html
+
+{% extends 'base.html' %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow-sm border-0 p-4">
+            <h3 class="text-center mb-3 fw-bold">User Account Registration</h3>
+            <form method="POST">
+                {% csrf_token %}
+                <div class="row">
+                    <div class="col-md-6 mb-3">{{ form.first_name }}</div>
+                    <div class="col-md-6 mb-3">{{ form.last_name }}</div>
+                </div>
+                <div class="mb-3">{{ form.email }}{{ form.email.errors }}</div>
+                <div class="mb-3">{{ form.phone_number }}{{ form.phone_number.errors }}</div>
+                <div class="mb-3">{{ form.password }}</div>
+                <div class="mb-3">{{ form.confirm_password }}{{ form.confirm_password.errors }}</div>
+                
+                <h5 class="mt-3 fs-6 text-muted fw-bold">Address Details</h5>
+                <div class="mb-3">{{ form.state }}</div>
+                <div class="mb-3">{{ form.district }}</div>
+                <div class="mb-3">{{ form.city }}</div>
+
+                <button type="submit" class="btn btn-success w-100 fw-bold mt-2">Register as User</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+
+
+    // 2. State -> District
+    const stateSelect = document.getElementById('id_state');
+    const districtSelect = document.getElementById('id_district');
+    const citySelect = document.getElementById('id_city');
+
+    if (stateSelect && districtSelect) {
+        stateSelect.addEventListener('change', function() {
+            const stateId = this.value;
+            districtSelect.innerHTML = '<option value="">---------</option>';
+            if (citySelect) citySelect.innerHTML = '<option value="">---------</option>';
+
+            if (stateId) {
+                fetch("{% url 'get_districts_api' %}?state_id=" + stateId)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.districts) {
+                            data.districts.forEach(item => {
+                                const option = document.createElement('option');
+                                option.value = item.id;
+                                option.textContent = item.name;
+                                districtSelect.appendChild(option);
+                            });
+                        }
+                    })
+                    .catch(err => console.error('Error loading districts:', err));
+            }
+        });
+    }
+
+    // 3. District -> City
+    if (districtSelect && citySelect) {
+        districtSelect.addEventListener('change', function() {
+            const districtId = this.value;
+            citySelect.innerHTML = '<option value="">---------</option>';
+
+            if (districtId) {
+                fetch("{% url 'get_cities_api' %}?district_id=" + districtId)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.cities) {
+                            data.cities.forEach(item => {
+                                const option = document.createElement('option');
+                                option.value = item.id;
+                                option.textContent = item.name;
+                                citySelect.appendChild(option);
+                            });
+                        }
+                    })
+                    .catch(err => console.error('Error loading cities:', err));
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
+
+
+expert step 1 
+
+
+{% extends 'base.html' %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow-sm border-0 p-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h3 class="fw-bold m-0">Basic Account Info</h3>
+                <span class="badge bg-primary fs-6">Step 1 of 3</span>
+            </div>
+            <form method="POST">
+                {% csrf_token %}
+                <div class="row">
+                    <div class="col-md-6 mb-3">{{ form.first_name }}</div>
+                    <div class="col-md-6 mb-3">{{ form.last_name }}</div>
+                </div>
+                <div class="mb-3">{{ form.email }}{{ form.email.errors }}</div>
+                <div class="mb-3">{{ form.phone_number }}{{ form.phone_number.errors }}</div>
+                <div class="mb-3">{{ form.password }}</div>
+                <div class="mb-3">{{ form.confirm_password }}{{ form.confirm_password.errors }}</div>
+                <button type="submit" class="btn btn-primary w-100 fw-bold">Next: Professional Details &rarr;</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

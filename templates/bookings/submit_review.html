@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+
+{% block title %}Leave Feedback - Adwise{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow-sm border-0 p-4">
+            <h3 class="fw-bold mb-1"><i class="fa-solid fa-star text-warning me-2"></i>Rate Your Consultation</h3>
+            <p class="text-muted small mb-4">Sharing feedback for session with <strong>{{ booking.expert.user.get_full_name }}</strong></p>
+
+            <form method="POST">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Rating (1 to 5 Stars)</label>
+                    {{ form.rating }}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Your Review / Experience</label>
+                    {{ form.comment }}
+                </div>
+                <div class="d-flex justify-content-between mt-4">
+                    <a href="{% url 'user_bookings' %}" class="btn btn-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-warning fw-bold">Submit Review</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

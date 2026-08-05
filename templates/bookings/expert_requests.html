@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+
+{% block title %}Client Requests - Adwise{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm border-0 p-4">
+    <h3 class="fw-bold mb-3"><i class="fa-solid fa-list-check text-primary me-2"></i>Client Session Requests</h3>
+    {% if requests_list %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Client</th>
+                        <th>Requested Date & Time</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for req in requests_list %}
+                    <tr>
+                        <td>
+                            <strong>{{ req.user.get_full_name }}</strong><br>
+                            <small class="text-muted">{{ req.user.email }} | {{ req.user.phone_number }}</small>
+                        </td>
+                        <td>
+                            {{ req.slot.date|date:"D, d M Y" }}<br>
+                            <small class="text-muted">{{ req.slot.start_time|time:"h:i A" }} - {{ req.slot.end_time|time:"h:i A" }}</small>
+                        </td>
+                        <td>
+                            {% if req.status == 'REQUESTED' %}<span class="badge bg-warning text-dark">Pending Action</span>
+                            {% elif req.status == 'ACCEPTED' %}<span class="badge bg-primary">Accepted (Payment Pending)</span>
+                            {% elif req.status == 'CONFIRMED' %}<span class="badge bg-success">Confirmed & Paid</span>
+                            {% elif req.status == 'POSTPONED' %}<span class="badge bg-info text-dark">Postponed</span>
+                            {% elif req.status == 'REJECTED' %}<span class="badge bg-danger">Rejected</span>
+                            {% elif req.status == 'EXPIRED' %}<span class="badge bg-secondary">Expired</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if req.status == 'REQUESTED' %}
+                                <a href="{% url 'expert_action' req.id 'accept' %}" class="btn btn-success btn-sm fw-bold">Accept</a>
+                                <a href="{% url 'expert_action' req.id 'reject' %}" class="btn btn-danger btn-sm fw-bold ms-1">Reject</a>
+                                
+                                <!-- Postpone Modal Trigger Button -->
+                                <button type="button" class="btn btn-warning btn-sm fw-bold ms-1" data-bs-toggle="modal" data-bs-target="#postponeModal{{ req.id }}">
+                                    Postpone
+                                </button>
+
+                                <!-- Postpone Modal -->
+                                <div class="modal fade" id="postponeModal{{ req.id }}" tabindex="-1" aria-hidden="true">
+                                  <div class="modal-dialog">
+                                    <div class="modal-content">
+                                      <form method="POST" action="{% url 'expert_action' req.id 'postpone' %}">
+                                        {% csrf_token %}
+                                        <div class="modal-header">
+                                          <h5 class="modal-title fw-bold">Propose New Session Time</h5>
+                                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                          <div class="mb-3">
+                                              <label class="form-label fw-semibold">New Date</label>
+                                              <input type="date" name="proposed_date" class="form-control" required>
+                                          </div>
+                                          <div class="mb-3">
+                                              <label class="form-label fw-semibold">New Start Time</label>
+                                              <input type="time" name="proposed_start_time" class="form-control" required>
+                                          </div>
+                                          <div class="mb-3">
+                                              <label class="form-label fw-semibold">New End Time</label>
+                                              <input type="time" name="proposed_end_time" class="form-control" required>
+                                          </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                                          <button type="submit" class="btn btn-warning btn-sm fw-bold">Send Postpone Proposal</button>
+                                        </div>
+                                      </form>
+                                    </div>
+                                  </div>
+                                </div>
+                            {% elif req.status == 'CONFIRMED' %}
+                                {% if req.meeting_link %}
+                                    <a href="{{ req.meeting_link }}" target="_blank" class="btn btn-primary btn-sm fw-bold">
+                                        <i class="fa-solid fa-video me-1"></i> Join Video Session
+                                    </a>
+                                {% else %}
+                                    <a href="https://meet.jit.si/Adwise-Consultation-{{ req.id }}" target="_blank" class="btn btn-primary btn-sm fw-bold">
+                                        <i class="fa-solid fa-video me-1"></i> Join Video Session
+                                    </a>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted small">No actions</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p class="text-muted m-0">No session requests received yet.</p>
+    {% endif %}
+</div>
+{% endblock %}

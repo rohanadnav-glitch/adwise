@@ -1,0 +1,233 @@
+{% extends 'base.html' %}
+
+{% block title %}Step 2: Professional Credentials & Location - Adwise{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow-sm border-0 p-4">
+            
+            <!-- Step Header & Progress -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3 class="fw-bold m-0"><i class="fa-solid fa-user-doctor text-primary me-2"></i>Professional Credentials</h3>
+                <span class="badge bg-primary fs-6 px-3 py-2">Step 2 of 3</span>
+            </div>
+
+            <form method="POST" id="expertStep2Form">
+                {% csrf_token %}
+
+                <!-- Non-field errors -->
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                        {% for error in form.non_field_errors %}
+                            <p class="mb-0">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <!-- Category Field -->
+                <div class="mb-3">
+                    <label for="id_category" class="form-label fw-semibold">Category</label>
+                    {{ form.category }}
+                    {% if form.category.errors %}
+                        <div class="text-danger small mt-1">{{ form.category.errors|striptags }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Subcategory Field -->
+                <div class="mb-3">
+                    <label for="id_subcategory" class="form-label fw-semibold">Subcategory</label>
+                    {{ form.subcategory }}
+                    {% if form.subcategory.errors %}
+                        <div class="text-danger small mt-1">{{ form.subcategory.errors|striptags }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Qualification Field -->
+                <div class="mb-3">
+                    <label for="{{ form.qualification.id_for_label }}" class="form-label fw-semibold">Highest Qualification</label>
+                    {{ form.qualification }}
+                    {% if form.qualification.errors %}
+                        <div class="text-danger small mt-1">{{ form.qualification.errors|striptags }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Experience Field -->
+                <div class="mb-3">
+                    <label for="{{ form.experience_years.id_for_label }}" class="form-label fw-semibold">Experience (Years)</label>
+                    {{ form.experience_years }}
+                    {% if form.experience_years.errors %}
+                        <div class="text-danger small mt-1">{{ form.experience_years.errors|striptags }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Consultation Fee Field -->
+                {% if form.hourly_rate %}
+                <div class="mb-3">
+                    <label for="{{ form.hourly_rate.id_for_label }}" class="form-label fw-semibold">Consultation Fee (per 60 mins)</label>
+                    {{ form.hourly_rate }}
+                    <small class="text-muted d-block mt-1">You can adjust rates anytime from your expert dashboard.</small>
+                    {% if form.hourly_rate.errors %}
+                        <div class="text-danger small mt-1">{{ form.hourly_rate.errors|striptags }}</div>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <!-- Location: State -->
+                {% if form.state %}
+                <div class="mb-3">
+                    <label for="{{ form.state.id_for_label }}" class="form-label fw-semibold">State</label>
+                    {{ form.state }}
+                    {% if form.state.errors %}
+                        <div class="text-danger small mt-1">{{ form.state.errors|striptags }}</div>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <!-- Location: District -->
+                {% if form.district %}
+                <div class="mb-3">
+                    <label for="{{ form.district.id_for_label }}" class="form-label fw-semibold">District</label>
+                    {{ form.district }}
+                    {% if form.district.errors %}
+                        <div class="text-danger small mt-1">{{ form.district.errors|striptags }}</div>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <!-- Location: City -->
+                {% if form.city %}
+                <div class="mb-3">
+                    <label for="{{ form.city.id_for_label }}" class="form-label fw-semibold">City</label>
+                    {{ form.city }}
+                    {% if form.city.errors %}
+                        <div class="text-danger small mt-1">{{ form.city.errors|striptags }}</div>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <!-- Bio Field -->
+                {% if form.bio %}
+                <div class="mb-3">
+                    <label for="{{ form.bio.id_for_label }}" class="form-label fw-semibold">Professional Bio</label>
+                    {{ form.bio }}
+                    {% if form.bio.errors %}
+                        <div class="text-danger small mt-1">{{ form.bio.errors|striptags }}</div>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <!-- Buttons -->
+                <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
+                    <a href="{% url 'expert_register_step1' %}" class="btn btn-outline-secondary">
+                        <i class="fa-solid fa-arrow-left me-1"></i> Back
+                    </a>
+                    <button type="submit" class="btn btn-primary fw-bold px-4">
+                        Continue to Step 3 <i class="fa-solid fa-arrow-right ms-1"></i>
+                    </button>
+                </div>
+                <!-- Put this right above <form> in expert_step2.html -->
+{% if form.errors %}
+    <div class="alert alert-danger">
+        <strong>Please correct the following errors:</strong>
+        <ul class="mb-0 mt-1">
+        {% for field, errors in form.errors.items %}
+            {% for error in errors %}
+                <li><strong>{{ field|title }}:</strong> {{ error }}</li>
+            {% endfor %}
+        {% endfor %}
+        </ul>
+    </div>
+{% endif %}
+            </form>
+
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 1. Category -> Subcategory
+    const categorySelect = document.getElementById('id_category');
+    const subcategorySelect = document.getElementById('id_subcategory');
+
+    if (categorySelect && subcategorySelect) {
+        categorySelect.addEventListener('change', function() {
+            const categoryId = this.value;
+            subcategorySelect.innerHTML = '<option value="">---------</option>';
+
+            if (categoryId) {
+                fetch("{% url 'get_subcategories_api' %}?category_id=" + categoryId)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.subcategories) {
+                            data.subcategories.forEach(item => {
+                                const option = document.createElement('option');
+                                option.value = item.id;
+                                option.textContent = item.name;
+                                subcategorySelect.appendChild(option);
+                            });
+                        }
+                    })
+                    .catch(err => console.error('Error loading subcategories:', err));
+            }
+        });
+    }
+
+    // 2. State -> District
+    const stateSelect = document.getElementById('id_state');
+    const districtSelect = document.getElementById('id_district');
+    const citySelect = document.getElementById('id_city');
+
+    if (stateSelect && districtSelect) {
+        stateSelect.addEventListener('change', function() {
+            const stateId = this.value;
+            districtSelect.innerHTML = '<option value="">---------</option>';
+            if (citySelect) citySelect.innerHTML = '<option value="">---------</option>';
+
+            if (stateId) {
+                fetch("{% url 'get_districts_api' %}?state_id=" + stateId)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.districts) {
+                            data.districts.forEach(item => {
+                                const option = document.createElement('option');
+                                option.value = item.id;
+                                option.textContent = item.name;
+                                districtSelect.appendChild(option);
+                            });
+                        }
+                    })
+                    .catch(err => console.error('Error loading districts:', err));
+            }
+        });
+    }
+
+    // 3. District -> City
+    if (districtSelect && citySelect) {
+        districtSelect.addEventListener('change', function() {
+            const districtId = this.value;
+            citySelect.innerHTML = '<option value="">---------</option>';
+
+            if (districtId) {
+                fetch("{% url 'get_cities_api' %}?district_id=" + districtId)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.cities) {
+                            data.cities.forEach(item => {
+                                const option = document.createElement('option');
+                                option.value = item.id;
+                                option.textContent = item.name;
+                                citySelect.appendChild(option);
+                            });
+                        }
+                    })
+                    .catch(err => console.error('Error loading cities:', err));
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

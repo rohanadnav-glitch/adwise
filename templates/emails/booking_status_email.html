@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f9; margin: 0; padding: 20px; }
+        .email-container { background: #ffffff; padding: 30px; border-radius: 8px; max-width: 520px; margin: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .header { border-bottom: 2px solid #0d6efd; padding-bottom: 15px; margin-bottom: 20px; }
+        .header h2 { color: #0d6efd; margin: 0; font-size: 22px; }
+        .details-box { background-color: #f8f9fa; padding: 15px; border-left: 4px solid #0d6efd; margin: 20px 0; border-radius: 4px; }
+        .btn { background-color: #0d6efd; color: #ffffff !important; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold; margin-top: 15px; }
+        .footer { margin-top: 30px; font-size: 12px; color: #888888; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <h2>Adwise Platform Update</h2>
+        </div>
+        <p>Hello <strong>{{ user_name }}</strong>,</p>
+        <p>{{ message_body }}</p>
+
+        <div class="details-box">
+            <p style="margin: 0 0 8px 0;"><strong>Expert:</strong> {{ expert_name }}</p>
+            <p style="margin: 0 0 8px 0;"><strong>Date:</strong> {{ session_date }}</p>
+            <p style="margin: 0;"><strong>Time Slot:</strong> {{ session_time }}</p>
+        </div>
+
+        {% if action_url %}
+            <div style="text-align: center;">
+                <a href="{{ action_url }}" class="btn">Join Video Session</a>
+            </div>
+        {% endif %}
+
+        <div class="footer">
+            <p>&copy; 2026 Adwise Consultation Platform. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
