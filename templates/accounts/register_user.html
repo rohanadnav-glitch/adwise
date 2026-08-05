@@ -28,13 +28,16 @@
 
                 <!-- First Name & Last Name -->
                 <div class="row g-3 mb-3">
-                    <div class="col-md-6">
-                        <label for="{{ form.first_name.id_for_label }}" class="form-label fw-semibold text-secondary small">First Name</label>
-                        {{ form.first_name }}
-                        {% if form.first_name.errors %}
-                            <div class="text-danger small mt-1">{{ form.first_name.errors|striptags }}</div>
-                        {% endif %}
-                    </div>
+ <!-- First Name Column -->
+    <div class="col-md-6">
+        <label for="{{ form.first_name.id_for_label }}" class="form-label fw-semibold text-secondary small">First Name</label>
+        {{ form.first_name }}
+        <div id="first-name-error" class="text-danger small mt-1">
+            {% if form.first_name.errors %}
+                {{ form.first_name.errors|striptags }}
+            {% endif %}
+        </div>
+    </div>
                     <div class="col-md-6">
                         <label for="{{ form.last_name.id_for_label }}" class="form-label fw-semibold text-secondary small">Last Name</label>
                         {{ form.last_name }}
@@ -136,24 +139,46 @@ document.addEventListener("DOMContentLoaded", function () {
     const districtSelect = document.getElementById("id_district");
     const citySelect = document.getElementById("id_city");
 
+    const firstNameInput = document.getElementById("id_first_name");
+    const errorDiv = document.getElementById("first-name-error");
+
+    if (firstNameInput) {
+        firstNameInput.addEventListener("blur", function () {
+            const value = firstNameInput.value.trim();
+            const nameRegex = /^[A-Za-z'-]+$/;
+
+            if (value === "") {
+                errorDiv.textContent = "First name is required.";
+                firstNameInput.classList.add("is-invalid");
+            } else if (!nameRegex.test(value)) {
+                errorDiv.textContent = "First name must contain only letters.";
+                firstNameInput.classList.add("is-invalid");
+            } else if (value.length < 2) {
+                errorDiv.textContent = "First name must be at least 2 characters long.";
+                firstNameInput.classList.add("is-invalid");
+            } else {
+                errorDiv.textContent = ""; // Clear error
+                firstNameInput.classList.remove("is-invalid");
+                firstNameInput.classList.add("is-valid");
+            }
+        });
+    }
+
+
+
+
     if (stateSelect) {
         stateSelect.addEventListener("change", function () {
             const stateId = this.value;
 
-            // Clear existing options
             districtSelect.innerHTML = '<option value="">Select District</option>';
             citySelect.innerHTML = '<option value="">Select City</option>';
 
             if (!stateId) return;
 
-            // Fetch Districts using Django URL tag
-            fetch("{% url 'get_districts' %}?state_id=" + stateId)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error("HTTP error " + response.status);
-                    }
-                    return response.json();
-                })
+            // Updated with namespace 'locations:'
+            fetch("/locations/get-districts/?state_id=" + stateId)
+                .then(response => response.json())
                 .then(data => {
                     data.forEach(item => {
                         const option = document.createElement("option");
@@ -162,7 +187,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         districtSelect.appendChild(option);
                     });
                 })
-                .catch(err => console.error("Error loading districts:", err));
+                .catch(err => console.error("Error fetching districts:", err));
         });
     }
 
@@ -174,14 +199,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
             if (!districtId) return;
 
-            // Fetch Cities using Django URL tag
-            fetch("{% url 'get_cities' %}?district_id=" + districtId)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error("HTTP error " + response.status);
-                    }
-                    return response.json();
-                })
+            // Updated with namespace 'locations:'
+            fetch("/locations/get-cities/?district_id=" + districtId)
+                .then(response => response.json())
                 .then(data => {
                     data.forEach(item => {
                         const option = document.createElement("option");
@@ -190,8 +210,9 @@ document.addEventListener("DOMContentLoaded", function () {
                         citySelect.appendChild(option);
                     });
                 })
-                .catch(err => console.error("Error loading cities:", err));
+                .catch(err => console.error("Error fetching cities:", err));
         });
     }
 });
+</script>
 {% endblock %}

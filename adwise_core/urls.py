@@ -5,8 +5,8 @@ from django.shortcuts import redirect
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('accounts/', include('apps.accounts.urls')),
-    path('locations/', include('apps.locations.urls')),
     path('categories/', include('apps.categories.urls')),
     path('bookings/', include('apps.bookings.urls')),
+    path('locations/', include('apps.locations.urls', namespace='locations')),
     path('', lambda request: redirect('login')),
 ]

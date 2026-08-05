@@ -7,6 +7,8 @@ from .models import UserRole, ExpertProfile
 from apps.categories.models import Category, SubCategory
 from apps.locations.models import State, District, City
 
+
+
 User = get_user_model()
 
 
@@ -15,7 +17,11 @@ User = get_user_model()
 # ==========================================
 class UserRegistrationForm(forms.ModelForm):
     first_name = forms.CharField(
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'First Name'})
+        widget=forms.TextInput(attrs={
+            'class': 'form-control', 
+            'placeholder': 'First Name',
+            'id': 'id_first_name'  # explicitly setting ID for JS selection
+        })
     )
     last_name = forms.CharField(
         widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Last Name'})
@@ -51,6 +57,46 @@ class UserRegistrationForm(forms.ModelForm):
         widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Confirm Password'})
     )
 
+    def clean_first_name(self):
+        first_name = self.cleaned_data.get('first_name', '').strip()
+
+        if not first_name:
+            raise forms.ValidationError("First name is required.")
+
+        # Allows only letters, spaces, hyphens, and apostrophes
+        if not re.match(r"^[A-Za-z'-]+$", first_name):
+            raise forms.ValidationError("First name must contain only letters.")
+
+        if len(first_name) < 2:
+            raise forms.ValidationError("First name must be at least 2 characters long.")
+
+        return first_name.capitalize()
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # 1. Populate querysets dynamically when form data is posted
+        if 'state' in self.data:
+            try:
+                state_id = int(self.data.get('state'))
+                self.fields['district'].queryset = District.objects.filter(state_id=state_id)
+            except (ValueError, TypeError):
+                pass
+
+        if 'district' in self.data:
+            try:
+                district_id = int(self.data.get('district'))
+                self.fields['city'].queryset = City.objects.filter(district_id=district_id)
+            except (ValueError, TypeError):
+                pass
+
+        # 2. Populate querysets if editing an existing instance
+        elif self.instance and self.instance.pk:
+            if self.instance.state:
+                self.fields['district'].queryset = District.objects.filter(state=self.instance.state)
+            if self.instance.district:
+                self.fields['city'].queryset = City.objects.filter(district=self.instance.district)
+
     class Meta:
         model = User
         fields = ['first_name', 'last_name', 'email', 'phone_number', 'state', 'district', 'city', 'password']
@@ -80,6 +126,11 @@ class ExpertStep1Form(forms.Form):
     confirm_password = forms.CharField(
         widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Confirm Password'})
     )
+
+
+
+
+       
 
     def clean_first_name(self):
         first_name = self.cleaned_data.get('first_name', '').strip()
@@ -130,44 +181,49 @@ class ExpertStep1Form(forms.Form):
 class ExpertStep2Form(forms.Form):
     category = forms.ModelChoiceField(
         queryset=Category.objects.all(),
+        empty_label="Select Category",
         widget=forms.Select(attrs={'class': 'form-select', 'id': 'id_category'})
     )
     subcategory = forms.ModelChoiceField(
-        queryset=SubCategory.objects.none(),
+        queryset=SubCategory.objects.none(),  # Default to empty until Category is chosen
+        empty_label="Select Subcategory",
         widget=forms.Select(attrs={'class': 'form-select', 'id': 'id_subcategory'})
     )
     qualification = forms.CharField(
-        max_length=255,
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., M.Tech, Ph.D, CA'})
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. Master of Laws (LL.M)'})
     )
     experience_years = forms.IntegerField(
-        min_value=0,
-        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Years of Experience'})
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'min': 0})
     )
     hourly_rate = forms.DecimalField(
-        min_value=0, max_digits=10, decimal_places=2,
-        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'e.g., 1000'})
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'})
     )
     state = forms.ModelChoiceField(
         queryset=State.objects.all(),
+        required=False,
+        empty_label="Select State",
         widget=forms.Select(attrs={'class': 'form-select', 'id': 'id_state'})
     )
     district = forms.ModelChoiceField(
         queryset=District.objects.none(),
+        required=False,
+        empty_label="Select District",
         widget=forms.Select(attrs={'class': 'form-select', 'id': 'id_district'})
     )
     city = forms.ModelChoiceField(
         queryset=City.objects.none(),
+        required=False,
+        empty_label="Select City",
         widget=forms.Select(attrs={'class': 'form-select', 'id': 'id_city'})
     )
     bio = forms.CharField(
-        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Describe your professional experience...'})
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 4, 'placeholder': 'Tell clients about your expertise...'})
     )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # Dynamic querysets for POST validation
+        # Dynamic queryset filtering upon POST submission
         if 'category' in self.data:
             try:
                 category_id = int(self.data.get('category'))
@@ -189,17 +245,14 @@ class ExpertStep2Form(forms.Form):
             except (ValueError, TypeError):
                 pass
 
-    def clean_experience_years(self):
-        exp = self.cleaned_data.get('experience_years')
-        if exp < 0 or exp > 60:
-            raise forms.ValidationError("Please enter a realistic number of years of experience.")
-        return exp
-
-    def clean_hourly_rate(self):
-        rate = self.cleaned_data.get('hourly_rate')
-        if rate <= 0:
-            raise forms.ValidationError("Consultation fee must be greater than zero.")
-        return rate
+        # Dynamic queryset filtering when initializing bound session data
+        elif self.initial:
+            if self.initial.get('category_id'):
+                self.fields['subcategory'].queryset = SubCategory.objects.filter(category_id=self.initial['category_id'])
+            if self.initial.get('state_id'):
+                self.fields['district'].queryset = District.objects.filter(state_id=self.initial['state_id'])
+            if self.initial.get('district_id'):
+                self.fields['city'].queryset = City.objects.filter(district_id=self.initial['district_id'])
 
 
 # ==========================================
@@ -215,29 +268,27 @@ class LoginForm(forms.Form):
 
 
 class ExpertProfileUpdateForm(forms.ModelForm):
-    hourly_rate = forms.DecimalField(
-        max_digits=10, 
-        decimal_places=2,
-        widget=forms.NumberInput(attrs={
-            'class': 'form-control',
-            'placeholder': 'Enter your session fee in ₹',
-            'min': '0'
-        }),
-        help_text="Update your hourly consultation fee (in ₹)"
-    )
-    qualification = forms.CharField(
-        widget=forms.TextInput(attrs={'class': 'form-control'})
-    )
-    experience_years = forms.IntegerField(
-        widget=forms.NumberInput(attrs={'class': 'form-control', 'min': '0'})
-    )
-    bio = forms.CharField(
-        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 4})
-    )
-
     class Meta:
         model = ExpertProfile
-        fields = ['hourly_rate', 'qualification', 'experience_years', 'bio']
-
-
-
+        fields = [
+            'category', 
+            'subcategory', 
+            'qualification', 
+            'experience_years', 
+            'hourly_rate', 
+            'state', 
+            'district', 
+            'city', 
+            'bio'
+        ]
+        widgets = {
+            'category': forms.Select(attrs={'class': 'form-select'}),
+            'subcategory': forms.Select(attrs={'class': 'form-select'}),
+            'qualification': forms.TextInput(attrs={'class': 'form-control'}),
+            'experience_years': forms.NumberInput(attrs={'class': 'form-control'}),
+            'hourly_rate': forms.NumberInput(attrs={'class': 'form-control'}),
+            'state': forms.Select(attrs={'class': 'form-select', 'id': 'id_state'}),
+            'district': forms.Select(attrs={'class': 'form-select', 'id': 'id_district'}),
+            'city': forms.Select(attrs={'class': 'form-select', 'id': 'id_city'}),
+            'bio': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
+        }

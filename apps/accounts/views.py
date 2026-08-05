@@ -2,6 +2,15 @@ from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.contrib.auth import get_user_model, login, logout, authenticate
 from django.contrib.auth.decorators import login_required
+from django.shortcuts import render, redirect, get_object_or_404
+from .forms import (
+    UserRegistrationForm,
+    ExpertStep1Form,
+    ExpertStep2Form,
+    ExpertProfileUpdateForm,  # <--- Add this import
+)
+
+
 # At the top of apps/accounts/views.py
 from .models import CustomUser, UserRole, ExpertProfile
 
@@ -71,7 +80,6 @@ def expert_register_step1(request):
         form = ExpertStep1Form(request.POST)
         if form.is_valid():
             cleaned = form.cleaned_data
-            
             # Save step 1 data to session (using email as username)
             request.session['expert_wizard_step1'] = {
                 'first_name': cleaned['first_name'],
@@ -103,6 +111,7 @@ def expert_register_step2(request):
 
     if request.method == 'POST':
         form = ExpertStep2Form(request.POST)
+        print(form)
         if form.is_valid():
             cleaned = form.cleaned_data
             
