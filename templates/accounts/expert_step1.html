@@ -10,16 +10,335 @@
             <form method="POST">
                 {% csrf_token %}
                 <div class="row">
-                    <div class="col-md-6 mb-3">{{ form.first_name }}</div>
-                    <div class="col-md-6 mb-3">{{ form.last_name }}</div>
+                    <!-- First Name Field -->
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.first_name.id_for_label }}"
+                            class="form-label fw-semibold text-secondary small">First Name</label>
+                        {{ form.first_name }}
+                        <div id="first-name-error" class="text-danger small mt-1">
+                            {% if form.first_name.errors %}
+                            {{ form.first_name.errors|striptags }}
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Last Name Field -->
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.last_name.id_for_label }}"
+                            class="form-label fw-semibold text-secondary small">Last Name</label>
+                        {{ form.last_name }}
+                        <div id="last-name-error" class="text-danger small mt-1">
+                            {% if form.last_name.errors %}
+                            {{ form.last_name.errors|striptags }}
+                            {% endif %}
+                        </div>
+                    </div>
                 </div>
-                <div class="mb-3">{{ form.email }}{{ form.email.errors }}</div>
-                <div class="mb-3">{{ form.phone_number }}{{ form.phone_number.errors }}</div>
-                <div class="mb-3">{{ form.password }}</div>
-                <div class="mb-3">{{ form.confirm_password }}{{ form.confirm_password.errors }}</div>
+                <div class="mb-3">
+                    <label for="{{ form.email.id_for_label }}" class="form-label fw-semibold text-secondary small">Email
+                        Address</label>
+                    {{ form.email }}
+                    <div id="email-error" class="text-danger small mt-1">
+                        {% if form.email.errors %}
+                        {{ form.email.errors|striptags }}
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="{{ form.phone_number.id_for_label }}"
+                        class="form-label fw-semibold text-secondary small">Phone Number</label>
+                    {{ form.phone_number }}
+                    <div id="phone-number-error" class="text-danger small mt-1">
+                        {% if form.phone_number.errors %}
+                        {{ form.phone_number.errors|striptags }}
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="{{ form.password.id_for_label }}"
+                        class="form-label fw-semibold text-secondary small">Password</label>
+                    <div class="input-group">
+                        {{ form.password }}
+                        <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                            <i class="fa-regular fa-eye" id="togglePasswordIcon"></i>
+                        </button>
+                    </div>
+                    <div id="password-error" class="text-danger small mt-1">
+                        {% if form.password.errors %}
+                        {{ form.password.errors|striptags }}
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="{{ form.confirm_password.id_for_label }}"
+                        class="form-label fw-semibold text-secondary small">Confirm Password</label>
+                    <div class="input-group">
+                        {{ form.confirm_password }}
+                        <button class="btn btn-outline-secondary" type="button" id="toggleConfirmPassword">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                id="toggleConfirmPasswordIcon" viewBox="0 0 16 16">
+                                <path
+                                    d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8M1.173 8a13 13 13 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5s3.879 1.168 5.168 2.457A13 13 13 0 0 1 14.828 8q-.086.13-.195.288c-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5s-3.879-1.168-5.168-2.457A13 13 13 0 0 1 1.172 8z" />
+                                <path
+                                    d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5M4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div id="confirm-password-error" class="text-danger small mt-1">
+                        {% if form.confirm_password.errors %}
+                        {{ form.confirm_password.errors|striptags }}
+                        {% endif %}
+                    </div>
+                </div>
                 <button type="submit" class="btn btn-primary w-100 fw-bold">Next: Professional Details &rarr;</button>
             </form>
         </div>
     </div>
 </div>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const firstNameInput = document.getElementById("id_first_name");
+        const firstNameErrorDiv = document.getElementById("first-name-error");
+
+        function validateFirstName() {
+            const val = firstNameInput.value.trim();
+            const lettersRegex = /^[a-zA-Z\s]+$/;
+
+            if (val === "") {
+                firstNameErrorDiv.textContent = "First name is required.";
+                firstNameInput.classList.add("is-invalid");
+                firstNameInput.classList.remove("is-valid");
+            } else if (val.length < 2) {
+                firstNameErrorDiv.textContent = "First name must be at least 2 characters long.";
+                firstNameInput.classList.add("is-invalid");
+                firstNameInput.classList.remove("is-valid");
+            } else if (!lettersRegex.test(val)) {
+                firstNameErrorDiv.textContent = "First name can only contain letters and spaces.";
+                firstNameInput.classList.add("is-invalid");
+                firstNameInput.classList.remove("is-valid");
+            } else {
+                firstNameErrorDiv.textContent = "";
+                firstNameInput.classList.remove("is-invalid");
+                firstNameInput.classList.add("is-valid");
+            }
+        }
+
+        if (firstNameInput) {
+            firstNameInput.addEventListener("blur", validateFirstName);
+            firstNameInput.addEventListener("input", validateFirstName);
+        }
+    });
+
+    const lastNameInput = document.getElementById("id_last_name");
+    const lastNameErrorDiv = document.getElementById("last-name-error");
+
+    function validateLastName() {
+        const val = lastNameInput.value.trim();
+        const lettersRegex = /^[a-zA-Z\s]+$/;
+
+        if (val === "") {
+            lastNameErrorDiv.textContent = "Last name is required.";
+            lastNameInput.classList.add("is-invalid");
+            lastNameInput.classList.remove("is-valid");
+        } else if (val.length < 2) {
+            lastNameErrorDiv.textContent = "Last name must be at least 2 characters long.";
+            lastNameInput.classList.add("is-invalid");
+            lastNameInput.classList.remove("is-valid");
+        } else if (!lettersRegex.test(val)) {
+            lastNameErrorDiv.textContent = "Last name can only contain letters and spaces.";
+            lastNameInput.classList.add("is-invalid");
+            lastNameInput.classList.remove("is-valid");
+        } else {
+            lastNameErrorDiv.textContent = "";
+            lastNameInput.classList.remove("is-invalid");
+            lastNameInput.classList.add("is-valid");
+        }
+    }
+
+    if (lastNameInput) {
+        lastNameInput.addEventListener("blur", validateLastName);
+        lastNameInput.addEventListener("input", validateLastName);
+    }
+
+    const emailInput = document.getElementById("id_email");
+    const emailErrorDiv = document.getElementById("email-error");
+
+    function validateEmail() {
+        const val = emailInput.value.trim().toLowerCase();
+
+        // Strict email regex matching standard domains
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(com|in|org|edu|net|gov|co\.in|ac\.in)$/;
+
+        if (val === "") {
+            emailErrorDiv.textContent = "Email address is required.";
+            emailInput.classList.add("is-invalid");
+            emailInput.classList.remove("is-valid");
+        } else if (!emailRegex.test(val)) {
+            emailErrorDiv.textContent = "Please enter a valid email address ending with .com, .in, .org, etc.";
+            emailInput.classList.add("is-invalid");
+            emailInput.classList.remove("is-valid");
+        } else {
+            emailErrorDiv.textContent = "";
+            emailInput.classList.remove("is-invalid");
+            emailInput.classList.add("is-valid");
+        }
+    }
+
+    if (emailInput) {
+        emailInput.addEventListener("blur", validateEmail);
+        emailInput.addEventListener("input", validateEmail);
+    }
+
+    const phoneInput = document.getElementById("id_phone_number");
+    const phoneErrorDiv = document.getElementById("phone-number-error");
+
+    function validatePhoneNumber() {
+        // Strip out non-digit characters automatically
+        phoneInput.value = phoneInput.value.replace(/\D/g, '').slice(0, 10);
+        const val = phoneInput.value;
+
+        const phoneRegex = /^[6-9]\d{9}$/;
+        const isAllSameDigits = /^(.)\1{9}$/.test(val);
+
+        if (val === "") {
+            phoneErrorDiv.textContent = "Phone number is required.";
+            phoneInput.classList.add("is-invalid");
+            phoneInput.classList.remove("is-valid");
+        } else if (val.length < 10) {
+            phoneErrorDiv.textContent = "Phone number must be exactly 10 digits.";
+            phoneInput.classList.add("is-invalid");
+            phoneInput.classList.remove("is-valid");
+        } else if (!phoneRegex.test(val)) {
+            phoneErrorDiv.textContent = "Phone number must start with 6, 7, 8, or 9.";
+            phoneInput.classList.add("is-invalid");
+            phoneInput.classList.remove("is-valid");
+        } else if (isAllSameDigits) {
+            phoneErrorDiv.textContent = "Please enter a valid phone number.";
+            phoneInput.classList.add("is-invalid");
+            phoneInput.classList.remove("is-valid");
+        } else {
+            phoneErrorDiv.textContent = "";
+            phoneInput.classList.remove("is-invalid");
+            phoneInput.classList.add("is-valid");
+        }
+    }
+
+    if (phoneInput) {
+        phoneInput.addEventListener("blur", validatePhoneNumber);
+        phoneInput.addEventListener("input", validatePhoneNumber);
+    }
+
+
+
+    const passwordInput = document.getElementById("id_password");
+    const passwordErrorDiv = document.getElementById("password-error");
+    const togglePasswordBtn = document.getElementById("togglePassword");
+    const togglePasswordIcon = document.getElementById("togglePasswordIcon");
+
+    const eyeSVG = `<path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8M1.173 8a13 13 13 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5s3.879 1.168 5.168 2.457A13 13 13 0 0 1 14.828 8q-.086.13-.195.288c-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5s-3.879-1.168-5.168-2.457A13 13 13 0 0 1 1.172 8z"/><path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5M4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0"/>`;
+    const eyeSlashSVG = `<path d="M13.359 11.238C15.06 9.72 16 8 16 8s-3-5.5-8-5.5a7 7 0 0 0-2.79.588l.77.771A6 6 0 0 1 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13 13 13 0 0 1 14.828 8q-.086.13-.195.288c-.335.48-.83 1.12-1.465 1.755-.165.165-.337.328-.517.486z"/><path d="M11.297 9.176a3.5 3.5 0 0 0-4.474-4.474l.823.823a2.5 2.5 0 0 1 2.829 2.829zm-2.943 1.299.822.822a3.5 3.5 0 0 1-4.474-4.474l.823.823a2.5 2.5 0 0 0 2.829 2.829z"/><path d="M3.35 5.47c-.18.16-.353.322-.518.487A13 13 13 0 0 0 1.172 8s3 5.5 8 5.5c.74 0 1.455-.102 2.13-.288l.745.746a8.8 8.8 0 0 1-2.875.542C3 13.5 0 8 0 8s1.536-2.822 3.99-4.225z"/><path d="M13.646 14.354l-12-12 .708-.708 12 12z"/>`;
+
+    // 1. Password Visibility Toggle
+    if (togglePasswordBtn && passwordInput) {
+        togglePasswordBtn.addEventListener("click", function (e) {
+            e.preventDefault(); // Prevents button from submitting the form
+
+            const type = passwordInput.getAttribute("type") === "password" ? "text" : "password";
+            passwordInput.setAttribute("type", type);
+
+            if (togglePasswordIcon) {
+                togglePasswordIcon.innerHTML = type === "text" ? eyeSlashSVG : eyeSVG;
+            }
+        });
+    }
+
+    // Helper to set field invalid state
+    function setError(message) {
+        passwordErrorDiv.textContent = message;
+        passwordInput.classList.add("is-invalid");
+        passwordInput.classList.remove("is-valid"); // Ensure green border is removed
+    }
+
+    // 2. Validation Function
+    function validatePassword() {
+        const value = passwordInput.value;
+
+        if (value === "") {
+            setError("Password is required.");
+        } else if (value.length < 8) {
+            setError("Password must be at least 8 characters long.");
+        } else if (!/[A-Z]/.test(value)) {
+            setError("Password must contain at least one uppercase letter (A-Z).");
+        } else if (!/[a-z]/.test(value)) {
+            setError("Password must contain at least one lowercase letter (a-z).");
+        } else if (!/\d/.test(value)) {
+            setError("Password must contain at least one digit (0-9).");
+        } else if (!/[@$!%*?&]/.test(value)) {
+            setError("Password must contain at least one special character (@, $, !, %, *, ?, &).");
+        } else {
+            passwordErrorDiv.textContent = "";
+            passwordInput.classList.remove("is-invalid");
+            passwordInput.classList.add("is-valid");
+        }
+    }
+
+    // Trigger validation on event
+    if (passwordInput) {
+        passwordInput.addEventListener("blur", validatePassword);
+        passwordInput.addEventListener("input", validatePassword);
+    }
+
+
+
+
+    const confirmPasswordInput = document.getElementById("id_confirm_password");
+    const confirmPasswordErrorDiv = document.getElementById("confirm-password-error");
+    const toggleConfirmPasswordBtn = document.getElementById("toggleConfirmPassword");
+    const toggleConfirmPasswordIcon = document.getElementById("toggleConfirmPasswordIcon");
+
+    // 1. Confirm Password Visibility Toggle
+    if (toggleConfirmPasswordBtn && confirmPasswordInput) {
+        toggleConfirmPasswordBtn.addEventListener("click", function (e) {
+            e.preventDefault(); // Prevents form submission
+
+            const type = confirmPasswordInput.getAttribute("type") === "password" ? "text" : "password";
+            confirmPasswordInput.setAttribute("type", type);
+
+            if (toggleConfirmPasswordIcon) {
+                toggleConfirmPasswordIcon.innerHTML = type === "text" ? eyeSlashSVG : eyeSVG;
+            }
+        });
+    }
+
+    // 2. Validation Function
+    function validateConfirmPassword() {
+        const confirmValue = confirmPasswordInput.value;
+        const passwordValue = passwordInput ? passwordInput.value : "";
+
+        if (confirmValue === "") {
+            confirmPasswordErrorDiv.textContent = "Please confirm your password.";
+            confirmPasswordInput.classList.add("is-invalid");
+            confirmPasswordInput.classList.remove("is-valid");
+        } else if (confirmValue !== passwordValue) {
+            confirmPasswordErrorDiv.textContent = "Passwords do not match.";
+            confirmPasswordInput.classList.add("is-invalid");
+            confirmPasswordInput.classList.remove("is-valid");
+        } else {
+            confirmPasswordErrorDiv.textContent = "";
+            confirmPasswordInput.classList.remove("is-invalid");
+            confirmPasswordInput.classList.add("is-valid");
+        }
+    }
+
+    // 3. Event Listeners
+    if (confirmPasswordInput) {
+        confirmPasswordInput.addEventListener("blur", validateConfirmPassword);
+        confirmPasswordInput.addEventListener("input", validateConfirmPassword);
+    }
+
+
+
+
+
+</script>
 {% endblock %}

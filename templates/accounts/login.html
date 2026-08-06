@@ -4,16 +4,104 @@
     <div class="col-md-5">
         <div class="card shadow-sm border-0 p-4">
             <h3 class="text-center mb-3 fw-bold">Login to Adwise</h3>
-            <form method="POST">
+
+            <!-- Display Invalid Credentials Error -->
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger p-2 small text-center mb-3">
+                    {{ form.non_field_errors|striptags }}
+                </div>
+            {% endif %}
+
+            <form method="POST" novalidate>
                 {% csrf_token %}
-                <div class="mb-3">{{ form.username }}</div>
-                <div class="mb-3">{{ form.password }}</div>
+
+                <!-- Username or Email Field -->
+                <div class="mb-3">
+                    <label for="{{ form.username.id_for_label }}" class="form-label fw-semibold text-secondary small d-none">Username or Email</label>
+                    {{ form.username }}
+                    <div id="username-error" class="text-danger small mt-1">
+                        {% if form.username.errors %}
+                            {{ form.username.errors|striptags }}
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Password Field with Eye Toggle -->
+                <div class="mb-3">
+                    <label for="{{ form.password.id_for_label }}" class="form-label fw-semibold text-secondary small d-none">Password</label>
+                    <div class="input-group">
+                        {{ form.password }}
+                        <button class="btn btn-outline-secondary" type="button" id="toggleLoginPassword">
+                            <svg id="toggleLoginPasswordIcon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye" viewBox="0 0 16 16">
+                                <path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8M1.173 8a13 13 13 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5s3.879 1.168 5.168 2.457A13 13 13 0 0 1 14.828 8q-.086.13-.195.288c-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5s-3.879-1.168-5.168-2.457A13 13 13 0 0 1 1.172 8z"/>
+                                <path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5M4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div id="password-error" class="text-danger small mt-1">
+                        {% if form.password.errors %}
+                            {{ form.password.errors|striptags }}
+                        {% endif %}
+                    </div>
+                </div>
+
                 <button type="submit" class="btn btn-primary w-100 fw-bold">Login</button>
             </form>
+
             <div class="text-center mt-3">
                 <small class="text-muted">Don't have an account? <a href="{% url 'register_user' %}">User Signup</a> or <a href="{% url 'expert_register_step1' %}">Register as Expert</a></small>
             </div>
         </div>
     </div>
 </div>
+
+<!-- JavaScript for Password Toggle and Empty Field Checks -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const usernameInput = document.getElementById("id_username");
+    const passwordInput = document.getElementById("id_password");
+    const usernameErrorDiv = document.getElementById("username-error");
+    const passwordErrorDiv = document.getElementById("password-error");
+    const toggleBtn = document.getElementById("toggleLoginPassword");
+    const toggleIcon = document.getElementById("toggleLoginPasswordIcon");
+
+    const eyeSVG = `<path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8M1.173 8a13 13 13 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5s3.879 1.168 5.168 2.457A13 13 13 0 0 1 14.828 8q-.086.13-.195.288c-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5s-3.879-1.168-5.168-2.457A13 13 13 0 0 1 1.172 8z"/><path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5M4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0"/>`;
+    const eyeSlashSVG = `<path d="M13.359 11.238C15.06 9.72 16 8 16 8s-3-5.5-8-5.5a7 7 0 0 0-2.79.588l.77.771A6 6 0 0 1 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13 13 13 0 0 1 14.828 8q-.086.13-.195.288c-.335.48-.83 1.12-1.465 1.755-.165.165-.337.328-.517.486z"/><path d="M11.297 9.176a3.5 3.5 0 0 0-4.474-4.474l.823.823a2.5 2.5 0 0 1 2.829 2.829zm-2.943 1.299.822.822a3.5 3.5 0 0 1-4.474-4.474l.823.823a2.5 2.5 0 0 0 2.829 2.829z"/><path d="M3.35 5.47c-.18.16-.353.322-.518.487A13 13 13 0 0 0 1.172 8s3 5.5 8 5.5c.74 0 1.455-.102 2.13-.288l.745.746a8.8 8.8 0 0 1-2.875.542C3 13.5 0 8 0 8s1.536-2.822 3.99-4.225z"/><path d="M13.646 14.354l-12-12 .708-.708 12 12z"/>`;
+
+    // Toggle password visibility
+    if (toggleBtn && passwordInput && toggleIcon) {
+        toggleBtn.addEventListener("click", function () {
+            const type = passwordInput.getAttribute("type") === "password" ? "text" : "password";
+            passwordInput.setAttribute("type", type);
+            toggleIcon.innerHTML = type === "text" ? eyeSlashSVG : eyeSVG;
+        });
+    }
+
+    // Username blur validation
+    if (usernameInput) {
+        usernameInput.addEventListener("blur", function () {
+            if (usernameInput.value.trim() === "") {
+                usernameErrorDiv.textContent = "Username or Email is required.";
+                usernameInput.classList.add("is-invalid");
+            } else {
+                usernameErrorDiv.textContent = "";
+                usernameInput.classList.remove("is-invalid");
+            }
+        });
+    }
+
+    // Password blur validation
+    if (passwordInput) {
+        passwordInput.addEventListener("blur", function () {
+            if (passwordInput.value === "") {
+                passwordErrorDiv.textContent = "Password is required.";
+                passwordInput.classList.add("is-invalid");
+            } else {
+                passwordErrorDiv.textContent = "";
+                passwordInput.classList.remove("is-invalid");
+            }
+        });
+    }
+});
+</script>
 {% endblock %}

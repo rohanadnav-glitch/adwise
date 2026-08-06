@@ -5,10 +5,11 @@
     <div class="col-md-3">
         <div class="card shadow-sm border-0 p-3 mb-4">
             <h5 class="fw-bold mb-3">Filter Experts</h5>
-            <form method="GET" action="{% url 'search_experts' %}">
+            <form method="GET" action="{% url 'bookings:search_experts' %}">
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Keyword</label>
-                    <input type="text" name="q" class="form-control" placeholder="Name, skill, degree..." value="{{ selected_q }}">
+                    <input type="text" name="q" class="form-control" placeholder="Name, skill, degree..."
+                        value="{{ selected_q }}">
                 </div>
 
                 <div class="mb-3">
@@ -16,7 +17,8 @@
                     <select name="category" id="id_category" class="form-select">
                         <option value="">All Categories</option>
                         {% for cat in categories %}
-                            <option value="{{ cat.id }}" {% if cat.id == selected_category %}selected{% endif %}>{{ cat.name }}</option>
+                        <option value="{{ cat.id }}" {% if cat.id == selected_category %}selected{% endif %}>{{ cat.name
+                            }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -33,24 +35,30 @@
                     <select name="state" id="id_state" class="form-select">
                         <option value="">All States</option>
                         {% for st in states %}
-                            <option value="{{ st.id }}" {% if st.id == selected_state %}selected{% endif %}>{{ st.name }}</option>
+                        <option value="{{ st.id }}" {% if st.id == selected_state %}selected{% endif %}>{{ st.name }}
+                        </option>
                         {% endfor %}
                     </select>
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label fw-semibold">District</label>
-                    <select name="district" id="id_district" class="form-select"><option value="">All Districts</option></select>
+                    <select name="district" id="id_district" class="form-select">
+                        <option value="">All Districts</option>
+                    </select>
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label fw-semibold">City</label>
-                    <select name="city" id="id_city" class="form-select"><option value="">All Cities</option></select>
+                    <select name="city" id="id_city" class="form-select">
+                        <option value="">All Cities</option>
+                    </select>
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Max Fee (per 60m)</label>
-                    <input type="number" name="max_fee" class="form-control" placeholder="e.g. 2000" value="{{ selected_max_fee }}">
+                    <input type="number" name="max_fee" class="form-control" placeholder="e.g. 2000"
+                        value="{{ selected_max_fee }}">
                 </div>
 
                 <div class="mb-3">
@@ -59,7 +67,8 @@
                 </div>
 
                 <button type="submit" class="btn btn-primary w-100 fw-bold">Apply Filters</button>
-                <a href="{% url 'search_experts' %}" class="btn btn-outline-secondary w-100 mt-2 btn-sm">Clear All</a>
+                <a href="{% url 'bookings:search_experts' %}" class="btn btn-outline-secondary w-100 mt-2 btn-sm">Clear
+                    All</a>
             </form>
         </div>
     </div>
@@ -68,40 +77,46 @@
     <div class="col-md-9">
         <h4 class="fw-bold mb-3">Available Experts ({{ experts|length }})</h4>
         {% if experts %}
-            <div class="row">
-                {% for expert in experts %}
-                <div class="col-md-6 mb-4">
-                    <div class="card shadow-sm border-0 h-100 p-3">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div>
-                                <h5 class="fw-bold mb-1">{{ expert.user.get_full_name }}</h5>
-                                <span class="badge bg-info text-dark mb-2">{{ expert.category.name }}</span>
-                                <div class="mb-2">
-    {% if expert.average_rating > 0 %}
-        <span class="text-warning fw-bold"><i class="fa-solid fa-star"></i> {{ expert.average_rating }}</span>
-        <span class="text-muted small">({{ expert.total_reviews_count }} review{% if expert.total_reviews_count > 1 %}s{% endif %})</span>
-    {% else %}
-        <span class="text-muted small"><i class="fa-regular fa-star"></i> New Expert (No ratings yet)</span>
-    {% endif %}
-</div>
+        <div class="row">
+            {% for expert in experts %}
+            <div class="col-md-6 mb-4">
+                <div class="card shadow-sm border-0 h-100 p-3">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h5 class="fw-bold mb-1">{{ expert.user.get_full_name }}</h5>
+                            <span class="badge bg-info text-dark mb-2">{{ expert.category.name }}</span>
+                            <div class="mb-2">
+                                {% if expert.average_rating > 0 %}
+                                <span class="text-warning fw-bold"><i class="fa-solid fa-star"></i> {{
+                                    expert.average_rating|floatformat:1 }}</span>
+                                <span class="text-muted small">({{ expert.total_reviews_count }} review{{
+                                    expert.total_reviews_count|pluralize }})</span>
+                                {% else %}
+                                <span class="text-muted small"><i class="fa-regular fa-star"></i> New Expert (No ratings
+                                    yet)</span>
+                                {% endif %}
                             </div>
-                            <span class="badge bg-success fs-6">₹{{ expert.hourly_rate }}/hr</span>
                         </div>
-                        <p class="text-muted small mb-2"><strong>Qualification:</strong> {{ expert.qualification }} ({{ expert.experience_years }} yrs exp)</p>
-                        <p class="text-muted small mb-2"><strong>Location:</strong> {{ expert.city.name }}, {{ expert.state.name }}</p>
-                        <p class="card-text text-truncate">{{ expert.bio }}</p>
-                        <div class="mt-auto">
-                            <a href="{% url 'expert_detail' expert.id %}" class="btn btn-outline-primary btn-sm w-100 fw-bold">View Profile & Schedule Slot</a>
-                        </div>
+                        <span class="badge bg-success fs-6">₹{{ expert.hourly_rate }}/hr</span>
+                    </div>
+                    <p class="text-muted small mb-2"><strong>Qualification:</strong> {{ expert.qualification }} ({{
+                        expert.experience_years }} yrs exp)</p>
+                    <p class="text-muted small mb-2"><strong>Location:</strong> {{ expert.city.name }}, {{
+                        expert.state.name }}</p>
+                    <p class="card-text text-truncate">{{ expert.bio }}</p>
+                    <div class="mt-auto">
+                        <a href="{% url 'bookings:expert_detail' expert.id %}"
+                            class="btn btn-outline-primary btn-sm w-100 fw-bold">View Profile & Schedule Slot</a>
                     </div>
                 </div>
-                {% endfor %}
             </div>
+            {% endfor %}
+        </div>
         {% else %}
-            <div class="alert alert-warning text-center p-4">
-                <h5>No experts found matching your criteria.</h5>
-                <p class="m-0">Try clearing or broadening your search filters.</p>
-            </div>
+        <div class="alert alert-warning text-center p-4">
+            <h5>No experts found matching your criteria.</h5>
+            <p class="m-0">Try clearing or broadening your search filters.</p>
+        </div>
         {% endif %}
     </div>
 </div>
@@ -109,86 +124,87 @@
 {% endblock %}
 {% block extra_js %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // 1. Category -> Subcategory
-    const categorySelect = document.getElementById('id_category');
-    const subcategorySelect = document.getElementById('id_subcategory');
+    document.addEventListener('DOMContentLoaded', function () {
+        // 1. Category -> Subcategory
+        const categorySelect = document.getElementById('id_category');
+        const subcategorySelect = document.getElementById('id_subcategory');
 
-    if (categorySelect && subcategorySelect) {
-        categorySelect.addEventListener('change', function() {
-            const categoryId = this.value;
-            subcategorySelect.innerHTML = '<option value="">---------</option>';
+        if (categorySelect && subcategorySelect) {
+            categorySelect.addEventListener('change', function () {
+                const categoryId = this.value;
+                subcategorySelect.innerHTML = '<option value="">---------</option>';
 
-            if (categoryId) {
-                fetch("{% url 'get_subcategories_api' %}?category_id=" + categoryId)
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.subcategories) {
-                            data.subcategories.forEach(item => {
-                                const option = document.createElement('option');
-                                option.value = item.id;
-                                option.textContent = item.name;
-                                subcategorySelect.appendChild(option);
-                            });
-                        }
-                    })
-                    .catch(err => console.error('Error loading subcategories:', err));
-            }
-        });
-    }
+                if (categoryId) {
+                    fetch("{% url 'bookings:get_subcategories_api' %}?category_id=" + categoryId)
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.subcategories) {
+                                data.subcategories.forEach(item => {
+                                    const option = document.createElement('option');
+                                    option.value = item.id;
+                                    option.textContent = item.name;
+                                    subcategorySelect.appendChild(option);
+                                });
+                            }
+                        })
+                        .catch(err => console.error('Error loading subcategories:', err));
+                }
+            });
+        }
 
-    // 2. State -> District
-    const stateSelect = document.getElementById('id_state');
-    const districtSelect = document.getElementById('id_district');
-    const citySelect = document.getElementById('id_city');
+        // 2. State -> District
+        const stateSelect = document.getElementById('id_state');
+        const districtSelect = document.getElementById('id_district');
+        const citySelect = document.getElementById('id_city');
 
-    if (stateSelect && districtSelect) {
-        stateSelect.addEventListener('change', function() {
-            const stateId = this.value;
-            districtSelect.innerHTML = '<option value="">---------</option>';
-            if (citySelect) citySelect.innerHTML = '<option value="">---------</option>';
+        if (stateSelect && districtSelect) {
+            stateSelect.addEventListener('change', function () {
+                const stateId = this.value;
+                districtSelect.innerHTML = '<option value="">---------</option>';
+                if (citySelect) citySelect.innerHTML = '<option value="">---------</option>';
 
-            if (stateId) {
-                fetch("{% url 'get_districts_api' %}?state_id=" + stateId)
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.districts) {
-                            data.districts.forEach(item => {
-                                const option = document.createElement('option');
-                                option.value = item.id;
-                                option.textContent = item.name;
-                                districtSelect.appendChild(option);
-                            });
-                        }
-                    })
-                    .catch(err => console.error('Error loading districts:', err));
-            }
-        });
-    }
+                if (stateId) {
+                    fetch("{% url 'locations:get_districts_api' %}?state_id=" + stateId)
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.districts) {
+                                data.districts.forEach(item => {
+                                    const option = document.createElement('option');
+                                    option.value = item.id;
+                                    option.textContent = item.name;
+                                    districtSelect.appendChild(option);
+                                });
+                            }
+                        })
+                        .catch(err => console.error('Error loading districts:', err));
+                }
+            });
+        }
 
-    // 3. District -> City
-    if (districtSelect && citySelect) {
-        districtSelect.addEventListener('change', function() {
-            const districtId = this.value;
-            citySelect.innerHTML = '<option value="">---------</option>';
+        // 3. District -> City
+        if (districtSelect && citySelect) {
+            districtSelect.addEventListener('change', function () {
+                const districtId = this.value;
+                citySelect.innerHTML = '<option value="">---------</option>';
 
-            if (districtId) {
-                fetch("{% url 'get_cities_api' %}?district_id=" + districtId)
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.cities) {
-                            data.cities.forEach(item => {
-                                const option = document.createElement('option');
-                                option.value = item.id;
-                                option.textContent = item.name;
-                                citySelect.appendChild(option);
-                            });
-                        }
-                    })
-                    .catch(err => console.error('Error loading cities:', err));
-            }
-        });
-    }
-});
+                if (districtId) {
+                    // To:
+                    fetch("{% url 'locations:get_cities_api' %}?district_id=" + districtId)
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.cities) {
+                                data.cities.forEach(item => {
+                                    const option = document.createElement('option');
+                                    option.value = item.id;
+                                    option.textContent = item.name;
+                                    citySelect.appendChild(option);
+                                });
+                            }
+                        })
+                        .catch(err => console.error('Error loading cities:', err));
+                }
+            });
+        }
+    });
 </script>
 {% endblock %}

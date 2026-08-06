@@ -24,14 +24,33 @@ class UserRegistrationForm(forms.ModelForm):
         })
     )
     last_name = forms.CharField(
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Last Name'})
+        widget=forms.TextInput(attrs={
+            'class': 'form-control', 
+            'placeholder': 'Last Name',
+            'id': 'id_last_name'  # Added ID for JavaScript selection
+        })
     )
+
+
+
     email = forms.EmailField(
-        widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Email Address'})
+        widget=forms.EmailInput(attrs={
+            'class': 'form-control', 
+            'placeholder': 'Email Address',
+            'id': 'id_email'  # Explicit ID for JS selection
+        })
     )
+
     phone_number = forms.CharField(
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Phone Number'})
+        widget=forms.TextInput(attrs={
+            'class': 'form-control', 
+            'placeholder': 'Phone Number',
+            'id': 'id_phone_number',
+            'maxlength': '10'  # Prevents typing more than 10 digits
+        })
     )
+
+
     state = forms.ModelChoiceField(
         queryset=State.objects.all(),
         required=False,
@@ -50,12 +69,32 @@ class UserRegistrationForm(forms.ModelForm):
         empty_label="Select City",
         widget=forms.Select(attrs={'class': 'form-select', 'id': 'id_city'})
     )
+
     password = forms.CharField(
-        widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Password'})
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control', 
+            'placeholder': 'Password',
+            'id': 'id_password'
+        })
     )
+
     confirm_password = forms.CharField(
-        widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Confirm Password'})
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control', 
+            'placeholder': 'Confirm Password',
+            'id': 'id_confirm_password'
+        })
     )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        password = cleaned_data.get("password")
+        confirm_password = cleaned_data.get("confirm_password")
+
+        if password and confirm_password and password != confirm_password:
+            self.add_error('confirm_password', "Passwords do not match.")
+
+        return cleaned_data
 
     def clean_first_name(self):
         first_name = self.cleaned_data.get('first_name', '').strip()
@@ -71,6 +110,55 @@ class UserRegistrationForm(forms.ModelForm):
             raise forms.ValidationError("First name must be at least 2 characters long.")
 
         return first_name.capitalize()
+
+    def clean_last_name(self):
+        last_name = self.cleaned_data.get('last_name', '').strip()
+
+        if not last_name:
+            raise forms.ValidationError("Last name is required.")
+
+        # Allows letters, hyphens, and apostrophes
+        if not re.match(r"^[A-Za-z'-]+$", last_name):
+            raise forms.ValidationError("Last name must contain only letters.")
+
+        if len(last_name) < 2:
+            raise forms.ValidationError("Last name must be at least 2 characters long.")
+
+        return last_name.capitalize()
+    
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email', '').strip().lower()
+
+        if not email:
+            raise forms.ValidationError("Email address is required.")
+
+        # Standard Email Format Check
+        email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_regex, email):
+            raise forms.ValidationError("Please enter a valid email address.")
+
+        # Check if email is already registered in the database
+        if User.objects.filter(email=email).exists():
+            raise forms.ValidationError("An account with this email address already exists.")
+
+        return email
+
+    def clean_phone_number(self):
+        phone_number = self.cleaned_data.get('phone_number', '').strip()
+
+        if not phone_number:
+            raise forms.ValidationError("Phone number is required.")
+
+        # Ensure exactly 10 digits
+        if not re.match(r"^\d{10}$", phone_number):
+            raise forms.ValidationError("Phone number must be exactly 10 digits.")
+
+        # Ensure valid Indian mobile start digit (6, 7, 8, or 9)
+        if not re.match(r"^[6-9]", phone_number):
+            raise forms.ValidationError("Please enter a valid 10-digit mobile number starting with 6, 7, 8, or 9.")
+
+        return phone_number
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -97,6 +185,31 @@ class UserRegistrationForm(forms.ModelForm):
             if self.instance.district:
                 self.fields['city'].queryset = City.objects.filter(district=self.instance.district)
 
+
+
+    def clean_password(self):
+        password = self.cleaned_data.get('password', '')
+
+        if not password:
+            raise forms.ValidationError("Password is required.")
+
+        if len(password) < 8:
+            raise forms.ValidationError("Password must be at least 8 characters long.")
+
+        if not re.search(r'[A-Z]', password):
+            raise forms.ValidationError("Password must contain at least one uppercase letter (A-Z).")
+
+        if not re.search(r'[a-z]', password):
+            raise forms.ValidationError("Password must contain at least one lowercase letter (a-z).")
+
+        if not re.search(r'\d', password):
+            raise forms.ValidationError("Password must contain at least one digit (0-9).")
+
+        if not re.search(r'[@$!%*?&]', password):
+            raise forms.ValidationError("Password must contain at least one special character (@, $, !, %, *, ?, &).")
+
+        return password
+
     class Meta:
         model = User
         fields = ['first_name', 'last_name', 'email', 'phone_number', 'state', 'district', 'city', 'password']
@@ -107,63 +220,140 @@ class UserRegistrationForm(forms.ModelForm):
 class ExpertStep1Form(forms.Form):
     first_name = forms.CharField(
         max_length=50,
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'First Name'})
+        widget=forms.TextInput(attrs={
+            'class': 'form-control', 
+            'placeholder': 'First Name',
+            'id': 'id_first_name'
+        })
     )
+
     last_name = forms.CharField(
         max_length=50,
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Last Name'})
+        widget=forms.TextInput(attrs={
+            'class': 'form-control', 
+            'placeholder': 'Last Name',
+            'id': 'id_last_name'
+        })
     )
+
     email = forms.EmailField(
-        widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Email Address'})
+        widget=forms.EmailInput(attrs={
+            'class': 'form-control', 
+            'placeholder': 'Email Address',
+            'id': 'id_email'
+        })
     )
+
+
     phone_number = forms.CharField(
         max_length=15,
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Phone Number'})
+        widget=forms.TextInput(attrs={
+            'class': 'form-control', 
+            'placeholder': 'Phone Number',
+            'id': 'id_phone_number',
+            'maxlength': '10'  # Restricts input length in HTML
+        })
     )
+
+
     password = forms.CharField(
-        widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Password'})
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control', 
+            'placeholder': 'Password',
+            'id': 'id_password'
+        })
     )
+
+
     confirm_password = forms.CharField(
-        widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Confirm Password'})
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control', 
+            'placeholder': 'Confirm Password',
+            'id': 'id_confirm_password'
+        })
     )
-
-
 
 
        
 
     def clean_first_name(self):
         first_name = self.cleaned_data.get('first_name', '').strip()
-        if not first_name.isalpha():
-            raise forms.ValidationError("First name must contain only letters.")
-        return first_name
+
+        if not first_name:
+            raise forms.ValidationError("First name is required.")
+        if len(first_name) < 2:
+            raise forms.ValidationError("First name must be at least 2 characters long.")
+        if not re.match(r'^[a-zA-Z\s]+$', first_name):
+            raise forms.ValidationError("First name can only contain letters and spaces.")
+
+        return first_name.title()  # Capitalizes first letter
 
     def clean_last_name(self):
         last_name = self.cleaned_data.get('last_name', '').strip()
-        if not last_name.isalpha():
-            raise forms.ValidationError("Last name must contain only letters.")
-        return last_name
+
+        if not last_name:
+            raise forms.ValidationError("Last name is required.")
+        if len(last_name) < 2:
+            raise forms.ValidationError("Last name must be at least 2 characters long.")
+        if not re.match(r'^[a-zA-Z\s]+$', last_name):
+            raise forms.ValidationError("Last name can only contain letters and spaces.")
+
+        return last_name.title()
 
     def clean_email(self):
-        email = self.cleaned_data.get('email', '').lower().strip()
+        email = self.cleaned_data.get('email', '').strip().lower()
+
+        if not email:
+            raise forms.ValidationError("Email address is required.")
+
+        # 1. Check for standard email format with common top-level domains (.com, .in, .org, .edu, .net, .co.in, etc.)
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(com|in|org|edu|net|gov|co\.in|ac\.in)$'
+        if not re.match(email_pattern, email):
+            raise forms.ValidationError("Please enter a valid email address (e.g., example@domain.com).")
+
+        # 2. Prevent continuous repeated characters like 'dsfsds' or 'aaaaa' in domain
+        domain = email.split('@')[1]
+        if re.search(r'(.)\1{3,}', domain):  # Prevents 4 identical consecutive characters
+            raise forms.ValidationError("Please enter a valid email domain.")
+
+        # 3. Check if email already exists
         if User.objects.filter(email=email).exists():
-            raise forms.ValidationError("A user with this email address already exists.")
+            raise forms.ValidationError("An account with this email address already exists.")
+
         return email
 
     def clean_phone_number(self):
         phone = self.cleaned_data.get('phone_number', '').strip()
-        if not re.match(r'^\+?[0-9]{10,15}$', phone):
-            raise forms.ValidationError("Enter a valid phone number (10 to 15 digits).")
-        if User.objects.filter(phone_number=phone).exists():
-            raise forms.ValidationError("A user with this phone number already exists.")
+
+        if not phone:
+            raise forms.ValidationError("Phone number is required.")
+
+        # Check for valid 10-digit Indian mobile number format
+        if not re.match(r'^[6-9]\d{9}$', phone):
+            raise forms.ValidationError("Please enter a valid 10-digit phone number starting with 6, 7, 8, or 9.")
+
+        # Prevent repeated numbers like 9999999999 or 0000000000
+        if len(set(phone)) == 1:
+            raise forms.ValidationError("Please enter a valid phone number.")
+
         return phone
 
     def clean_password(self):
-        password = self.cleaned_data.get('password')
+        password = self.cleaned_data.get('password', '')
+
+        if not password:
+            raise forms.ValidationError("Password is required.")
         if len(password) < 8:
             raise forms.ValidationError("Password must be at least 8 characters long.")
+        if not re.search(r'[A-Z]', password):
+            raise forms.ValidationError("Password must contain at least one uppercase letter.")
+        if not re.search(r'[a-z]', password):
+            raise forms.ValidationError("Password must contain at least one lowercase letter.")
         if not re.search(r'\d', password):
             raise forms.ValidationError("Password must contain at least one digit.")
+        if not re.search(r'[@$!%*?&]', password):
+            raise forms.ValidationError("Password must contain at least one special character (@$!%*?&).")
+
         return password
 
     def clean(self):
@@ -171,9 +361,12 @@ class ExpertStep1Form(forms.Form):
         password = cleaned_data.get('password')
         confirm_password = cleaned_data.get('confirm_password')
 
-        if password and confirm_password and password != confirm_password:
+        if confirm_password and password and confirm_password != password:
             self.add_error('confirm_password', "Passwords do not match.")
+
         return cleaned_data
+
+
 
 # ==========================================
 # 3. EXPERT REGISTRATION - STEP 2 (Credentials & Location)
@@ -260,10 +453,18 @@ class ExpertStep2Form(forms.Form):
 # ==========================================
 class LoginForm(forms.Form):
     username = forms.CharField(
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Username or Email Address'})
+        widget=forms.TextInput(attrs={
+            'class': 'form-control', 
+            'placeholder': 'Username or Email Address',
+            'id': 'id_username'
+        })
     )
     password = forms.CharField(
-        widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Password'})
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control', 
+            'placeholder': 'Password',
+            'id': 'id_password'
+        })
     )
 
 

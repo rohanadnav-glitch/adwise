@@ -1,6 +1,10 @@
 from django.urls import path
 from . import views
 
+
+app_name = 'bookings'
+app_name = 'locations'
+
 urlpatterns = [
     # Schedule Management
     path('schedule/', views.schedule_manager_view, name='schedule_manager'),
@@ -24,4 +28,6 @@ urlpatterns = [
     path('notifications/', views.notifications_view, name='notifications'),
 
     path('review/submit/<int:booking_id>/', views.submit_review_view, name='submit_review'),
+    path('api/subcategories/', views.get_subcategories_api, name='get_subcategories_api'),
+
 ]

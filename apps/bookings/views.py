@@ -11,7 +11,7 @@ from .forms import AvailabilitySlotForm
 from .utils import send_session_email_notification
 from .models import Review
 from .forms import ReviewForm
-
+from django.http import JsonResponse
 
 
 
@@ -547,3 +547,10 @@ def submit_review_view(request, booking_id):
         'form': form,
         'booking': booking
     })
+
+
+
+def get_subcategories_api(request):
+    category_id = request.GET.get('category_id')
+    # logic to fetch subcategories...
+    return JsonResponse({'subcategories': list(subcategories)})

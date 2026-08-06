@@ -1,4 +1,3 @@
-
 from django.views.decorators.http import require_GET
 from django.http import JsonResponse
 from .models import District, City
