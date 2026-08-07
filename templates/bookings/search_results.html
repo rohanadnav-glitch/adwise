@@ -17,8 +17,7 @@
                     <select name="category" id="id_category" class="form-select">
                         <option value="">All Categories</option>
                         {% for cat in categories %}
-                        <option value="{{ cat.id }}" {% if cat.id == selected_category %}selected{% endif %}>{{ cat.name
-                            }}</option>
+                        <option value="{{ cat.id }}" {% if cat.id == selected_category %}selected{% endif %}>{{ cat.name}}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -99,10 +98,8 @@
                         </div>
                         <span class="badge bg-success fs-6">₹{{ expert.hourly_rate }}/hr</span>
                     </div>
-                    <p class="text-muted small mb-2"><strong>Qualification:</strong> {{ expert.qualification }} ({{
-                        expert.experience_years }} yrs exp)</p>
-                    <p class="text-muted small mb-2"><strong>Location:</strong> {{ expert.city.name }}, {{
-                        expert.state.name }}</p>
+                    <p class="text-muted small mb-2"><strong>Qualification:</strong> {{ expert.qualification }} ({{expert.experience_years}} yrs exp)</p>
+                    <p class="text-muted small mb-2"><strong>Location:</strong> {{ expert.city.name }}, {{expert.state.name}}</p>
                     <p class="card-text text-truncate">{{ expert.bio }}</p>
                     <div class="mt-auto">
                         <a href="{% url 'bookings:expert_detail' expert.id %}"
@@ -129,27 +126,38 @@
         const categorySelect = document.getElementById('id_category');
         const subcategorySelect = document.getElementById('id_subcategory');
 
-        if (categorySelect && subcategorySelect) {
-            categorySelect.addEventListener('change', function () {
-                const categoryId = this.value;
-                subcategorySelect.innerHTML = '<option value="">---------</option>';
+        function fetchSubcategories(categoryId) {
+            if (!subcategorySelect) return;
+            subcategorySelect.innerHTML = '<option value="">All Subcategories</option>';
 
-                if (categoryId) {
-                    fetch("{% url 'bookings:get_subcategories_api' %}?category_id=" + categoryId)
-                        .then(res => res.json())
-                        .then(data => {
-                            if (data.subcategories) {
-                                data.subcategories.forEach(item => {
-                                    const option = document.createElement('option');
-                                    option.value = item.id;
-                                    option.textContent = item.name;
-                                    subcategorySelect.appendChild(option);
-                                });
-                            }
-                        })
-                        .catch(err => console.error('Error loading subcategories:', err));
-                }
+            if (!categoryId) return;
+
+            // Updated URL path to standard categories route
+            fetch("/categories/get-subcategories/?category_id=" + categoryId)
+                .then(res => res.json())
+                .then(data => {
+                    console.log("Subcategory API Response:", data); // Check browser F12 console
+                    const list = Array.isArray(data) ? data : (data.subcategories || data.results || []);
+                    list.forEach(item => {
+                        const option = document.createElement('option');
+                        option.value = item.id || item.pk;
+                        option.textContent = item.name || item.title;
+                        subcategorySelect.appendChild(option);
+                    });
+                })
+                .catch(err => console.error('Error loading subcategories:', err));
+        }
+
+        if (categorySelect && subcategorySelect) {
+            // Trigger on dropdown selection change
+            categorySelect.addEventListener('change', function () {
+                fetchSubcategories(this.value);
             });
+
+            // Trigger immediately on page load if category is pre-selected
+            if (categorySelect.value) {
+                fetchSubcategories(categorySelect.value);
+            }
         }
 
         // 2. State -> District
@@ -164,7 +172,7 @@
                 if (citySelect) citySelect.innerHTML = '<option value="">---------</option>';
 
                 if (stateId) {
-                    fetch("{% url 'locations:get_districts_api' %}?state_id=" + stateId)
+                    fetch("{% url 'locations:get_districts' %}?state_id=" + stateId)
                         .then(res => res.json())
                         .then(data => {
                             if (data.districts) {
@@ -188,8 +196,7 @@
                 citySelect.innerHTML = '<option value="">---------</option>';
 
                 if (districtId) {
-                    // To:
-                    fetch("{% url 'locations:get_cities_api' %}?district_id=" + districtId)
+                    fetch("{% url 'locations:get_cities' %}?district_id=" + districtId)
                         .then(res => res.json())
                         .then(data => {
                             if (data.cities) {

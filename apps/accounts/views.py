@@ -23,8 +23,8 @@ from .models import UserRole, ExpertProfile
 # ==========================================
 def redirect_by_role(user):
     if user.role == UserRole.EXPERT:
-        return redirect('expert_dashboard')
-    return redirect('user_dashboard')
+        return redirect('accounts:expert_dashboard')
+    return redirect('accounts:user_dashboard')
 
 
 # ==========================================
@@ -37,7 +37,7 @@ User = get_user_model()
 # ==========================================
 def register_user_view(request):
     if request.user.is_authenticated:
-        return redirect('user_dashboard')
+        return redirect('accounts:user_dashboard')
 
     if request.method == 'POST':
         form = UserRegistrationForm(request.POST)
@@ -64,7 +64,7 @@ def register_user_view(request):
             user.save()
 
             messages.success(request, "Account created successfully! Please log in with your credentials.")
-            return redirect('login')
+            return redirect('accounts:login')
         else:
             messages.error(request, "Please correct the errors highlighted below.")
     else:
@@ -90,7 +90,7 @@ def expert_register_step1(request):
                 'password': cleaned['password'],
             }
             request.session.modified = True
-            return redirect('expert_register_step2')
+            return redirect('accounts:expert_register_step2')
         else:
             messages.error(request, "Please fix the errors in Step 1.")
     else:
@@ -107,7 +107,7 @@ def expert_register_step2(request):
     # 1. Guard check for Step 1
     if 'expert_wizard_step1' not in request.session:
         messages.warning(request, "Please complete Step 1 first.")
-        return redirect('expert_register_step1')
+        return redirect('accounts:expert_register_step1')
 
     if request.method == 'POST':
         form = ExpertStep2Form(request.POST)
@@ -136,7 +136,7 @@ def expert_register_step2(request):
             
             # Explicitly mark session as modified
             request.session.modified = True
-            return redirect('expert_register_step3')
+            return redirect('accounts:expert_register_step3')
         else:
             messages.error(request, "Please correct the errors in Step 2 below.")
     else:
@@ -168,7 +168,7 @@ def expert_register_step3(request):
     # 1. Guard check for missing session data
     if not step1 or not step2:
         messages.error(request, "Session expired or incomplete registration step.")
-        return redirect('expert_register_step1')
+        return redirect('accounts:expert_register_step1')
 
     # 2. Build context safely with database lookups
     try:
@@ -186,7 +186,7 @@ def expert_register_step3(request):
         }
     except Exception as e:
         messages.error(request, f"Configuration lookup error: {str(e)}. Restarting setup.")
-        return redirect('expert_register_step1')
+        return redirect('accounts:expert_register_step1')
 
     # 3. Process Final Registration Submission
     if request.method == 'POST':
@@ -225,11 +225,11 @@ def expert_register_step3(request):
                 # Step D: Log in user and redirect to dashboard
                 login(request, user)
                 messages.success(request, "Expert registration complete! Welcome to Adwise.")
-                return redirect('expert_dashboard')
+                return redirect('accounts:expert_dashboard')
 
         except Exception as e:
             messages.error(request, f"Registration failed due to a database error: {str(e)}")
-            return redirect('expert_register_step3')
+            return redirect('accounts:expert_register_step3')
 
     return render(request, 'accounts/expert_step3.html', context)
 
@@ -271,7 +271,7 @@ def login_view(request):
 def logout_view(request):
     logout(request)
     messages.success(request, "Logged out successfully.")
-    return redirect('login')
+    return redirect('accounts:login')
 
 
 # ==========================================
@@ -280,14 +280,14 @@ def logout_view(request):
 @login_required
 def user_dashboard_view(request):
     if request.user.role != UserRole.USER:
-        return redirect('expert_dashboard')
+        return redirect('accounts:expert_dashboard')
     return render(request, 'dashboard/user_dashboard.html')
 
 
 @login_required
 def expert_dashboard_view(request):
     if request.user.role != UserRole.EXPERT:
-        return redirect('user_dashboard')
+        return redirect('accounts:user_dashboard')
     return render(request, 'dashboard/expert_dashboard.html')
 
 
@@ -298,7 +298,7 @@ def edit_expert_profile_view(request):
     """ Allows experts to update their consultation fee, qualification, and bio """
     if request.user.role != UserRole.EXPERT:
         messages.error(request, "Only experts can access profile settings.")
-        return redirect('user_dashboard')
+        return redirect('accounts:user_dashboard')
 
     expert_profile = get_object_or_404(ExpertProfile, user=request.user)
 
@@ -307,7 +307,7 @@ def edit_expert_profile_view(request):
         if form.is_valid():
             form.save()
             messages.success(request, f"Your consultation fee has been updated to ₹{expert_profile.hourly_rate}/hr!")
-            return redirect('schedule_manager')
+            return redirect('bookings:schedule_manager')
     else:
         form = ExpertProfileUpdateForm(instance=expert_profile)
 

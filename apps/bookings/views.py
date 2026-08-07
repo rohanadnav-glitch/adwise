@@ -35,7 +35,7 @@ def schedule_manager_view(request):
     """ Allows experts to view, add, and manage their consultation availability slots """
     if request.user.role != UserRole.EXPERT:
         messages.error(request, "Access restricted to Expert accounts.")
-        return redirect('user_dashboard')
+        return redirect('accounts:user_dashboard')
 
     # 1. Fetch expert profile
     expert_profile = get_object_or_404(ExpertProfile, user=request.user)
@@ -66,7 +66,7 @@ def schedule_manager_view(request):
                     is_booked=False
                 )
                 messages.success(request, "New availability slot added successfully!")
-                return redirect('schedule_manager')
+                return redirect('bookings:schedule_manager')
         else:
             messages.error(request, "Please fill in all date and time fields.")
 
@@ -84,7 +84,7 @@ def schedule_manager_view(request):
 def delete_slot_view(request, slot_id):
     if request.user.role != UserRole.EXPERT:
         messages.error(request, "Access denied.")
-        return redirect('user_dashboard')
+        return redirect('accounts:user_dashboard')
 
     slot = get_object_or_404(ExpertAvailability, id=slot_id, expert__user=request.user)
 
@@ -94,7 +94,7 @@ def delete_slot_view(request, slot_id):
         slot.delete()
         messages.success(request, "Availability slot removed successfully.")
 
-    return redirect('schedule_manager')
+    return redirect('bookings:schedule_manager')
 
 
 # ==========================================
@@ -193,7 +193,7 @@ def expert_detail_view(request, expert_id):
 def request_session_view(request, slot_id):
     if request.user.role != UserRole.USER:
         messages.error(request, "Only registered users can request expert sessions.")
-        return redirect('search_experts')
+        return redirect('bookings:search_experts')
 
     slot = get_object_or_404(
         ExpertAvailability.objects.select_for_update(), 
@@ -209,7 +209,7 @@ def request_session_view(request, slot_id):
 
     if existing_request:
         messages.warning(request, "You already have an active request or booking for this slot.")
-        return redirect('expert_detail', expert_id=slot.expert.id)
+        return redirect('bookings:expert_detail', expert_id=slot.expert.id)
 
     SessionBooking.objects.create(
         user=request.user,
@@ -225,14 +225,14 @@ def request_session_view(request, slot_id):
     )
 
     messages.success(request, "Session request sent to the expert!")
-    return redirect('user_bookings')
+    return redirect('bookings:user_bookings')
 
 
 @login_required
 def expert_requests_view(request):
     if request.user.role != UserRole.EXPERT:
         messages.error(request, "Access restricted to Expert accounts.")
-        return redirect('user_dashboard')
+        return redirect('accounts:user_dashboard')
 
     expert = get_object_or_404(ExpertProfile, user=request.user)
     requests_list = SessionBooking.objects.filter(expert=expert).select_related('user', 'slot')
@@ -247,7 +247,7 @@ def expert_requests_view(request):
 def expert_action_view(request, booking_id, action):
     if request.user.role != UserRole.EXPERT:
         messages.error(request, "Access denied.")
-        return redirect('user_dashboard')
+        return redirect('accounts:user_dashboard')
 
     booking = get_object_or_404(
         SessionBooking.objects.select_for_update(), 
@@ -309,13 +309,13 @@ def expert_action_view(request, booking_id, action):
         )
         messages.info(request, "Session request rejected.")
 
-    return redirect('expert_requests')
+    return redirect('bookings:expert_requests')
 
 
 @login_required
 def user_bookings_view(request):
     if request.user.role != UserRole.USER:
-        return redirect('expert_dashboard')
+        return redirect('accounts:expert_dashboard')
 
     bookings = SessionBooking.objects.filter(user=request.user).select_related('expert__user', 'slot')
 
@@ -352,7 +352,7 @@ def process_payment_view(request, booking_id):
             "The 24-hour payment window for this session has expired."
         )
 
-        return redirect('user_bookings')
+        return redirect('bookings:user_bookings')
 
     if request.method == 'POST':
 
@@ -451,7 +451,7 @@ def process_payment_view(request, booking_id):
             "is now confirmed."
         )
 
-        return redirect('user_bookings')
+        return redirect('bookings:user_bookings')
 
     return render(
         request,
@@ -501,7 +501,7 @@ def respond_postpone_view(request, booking_id, response_action):
         )
         messages.info(request, "Postponed offer declined.")
 
-    return redirect('user_bookings')
+    return redirect('bookings:user_bookings')
 
 
 @login_required
@@ -527,7 +527,7 @@ def submit_review_view(request, booking_id):
     # Prevent duplicate reviews for the same session
     if hasattr(booking, 'review'):
         messages.warning(request, "You have already submitted a review for this session.")
-        return redirect('user_bookings')
+        return redirect('bookings:user_bookings')
 
     if request.method == 'POST':
         form = ReviewForm(request.POST)
@@ -539,7 +539,7 @@ def submit_review_view(request, booking_id):
             review.save()
 
             messages.success(request, "Thank you! Your feedback has been submitted successfully.")
-            return redirect('user_bookings')
+            return redirect('bookings:user_bookings')
     else:
         form = ReviewForm()
 

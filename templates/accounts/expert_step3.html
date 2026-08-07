@@ -22,7 +22,7 @@
             <form method="POST">
                 {% csrf_token %}
                 <div class="d-flex justify-content-between mt-4">
-                    <a href="{% url 'expert_register_step2' %}" class="btn btn-outline-secondary">&larr; Back to Edit</a>
+                    <a href="{% url 'accounts:expert_register_step2' %}" class="btn btn-outline-secondary">&larr; Back to Edit</a>
                     <button type="submit" class="btn btn-success fw-bold px-4">Complete Registration</button>
                 </div>
             </form>

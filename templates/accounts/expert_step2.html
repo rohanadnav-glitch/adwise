@@ -13,20 +13,20 @@
                 <p class="text-muted small mt-1">Provide details about your experience and location</p>
             </div>
 
-            <form method="POST" action="{% url 'expert_register_step2' %}" novalidate>
+            <form method="POST" action="{% url 'accounts:expert_register_step2' %}" novalidate>
                 {% csrf_token %}
 
                 {% if form.errors %}
-                    <div class="alert alert-danger py-2 mb-3">
-                        <strong class="small">Please correct the following errors:</strong>
-                        <ul class="mb-0 mt-1 small">
+                <div class="alert alert-danger py-2 mb-3">
+                    <strong class="small">Please correct the following errors:</strong>
+                    <ul class="mb-0 mt-1 small">
                         {% for field, errors in form.errors.items %}
-                            {% for error in errors %}
-                                <li><strong>{{ field|title }}:</strong> {{ error }}</li>
-                            {% endfor %}
+                        {% for error in errors %}
+                        <li><strong>{{ field|title }}:</strong> {{ error }}</li>
                         {% endfor %}
-                        </ul>
-                    </div>
+                        {% endfor %}
+                    </ul>
+                </div>
                 {% endif %}
 
                 <!-- Category & Subcategory -->
@@ -36,28 +36,46 @@
                         {{ form.category }}
                     </div>
                     <div class="col-md-6">
-                        <label for="id_subcategory" class="form-label fw-semibold text-secondary small">Subcategory</label>
+                        <label for="id_subcategory"
+                            class="form-label fw-semibold text-secondary small">Subcategory</label>
                         {{ form.subcategory }}
                     </div>
                 </div>
 
                 <!-- Qualification & Experience -->
-                <div class="row g-3 mb-3">
+                <div class="row mb-3">
+                    <!-- Highest Qualification -->
                     <div class="col-md-6">
-                        <label for="{{ form.qualification.id_for_label }}" class="form-label fw-semibold text-secondary small">Highest Qualification</label>
+                        <label for="{{ form.qualification.id_for_label }}"
+                            class="form-label fw-semibold text-secondary small">Highest Qualification</label>
                         {{ form.qualification }}
+                        <div id="qualification-error" class="text-danger small mt-1">
+                            {% if form.qualification.errors %}
+                            {{ form.qualification.errors|striptags }}
+                            {% endif %}
+                        </div>
                     </div>
+
+                    <!-- Experience (Years) -->
                     <div class="col-md-6">
-                        <label for="{{ form.experience_years.id_for_label }}" class="form-label fw-semibold text-secondary small">Experience (Years)</label>
+                        <label for="{{ form.experience_years.id_for_label }}"
+                            class="form-label fw-semibold text-secondary small">Experience (Years)</label>
                         {{ form.experience_years }}
+                        <div id="experience-error" class="text-danger small mt-1">
+                            {% if form.experience_years.errors %}
+                            {{ form.experience_years.errors|striptags }}
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
 
                 <!-- Hourly Rate -->
                 <div class="mb-3">
-                    <label for="{{ form.hourly_rate.id_for_label }}" class="form-label fw-semibold text-secondary small">Consultation Fee (per 60 mins)</label>
+                    <label for="{{ form.hourly_rate.id_for_label }}"
+                        class="form-label fw-semibold text-secondary small">Consultation Fee (per 60 mins)</label>
                     {{ form.hourly_rate }}
-                    <div class="form-text small text-muted">You can adjust rates anytime from your expert dashboard.</div>
+                    <div class="form-text small text-muted">You can adjust rates anytime from your expert dashboard.
+                    </div>
                 </div>
 
                 <!-- Location Row: State, District, City -->
@@ -78,13 +96,23 @@
 
                 <!-- Bio -->
                 <div class="mb-4">
-                    <label for="{{ form.bio.id_for_label }}" class="form-label fw-semibold text-secondary small">Professional Bio</label>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <label for="{{ form.bio.id_for_label }}" class="form-label fw-semibold text-secondary small">
+                            Professional Bio
+                        </label>
+                        <span class="text-muted small" id="bio-char-counter">0 / 1000</span>
+                    </div>
                     {{ form.bio }}
+                    <div id="bio-error" class="text-danger small mt-1">
+                        {% if form.bio.errors %}
+                        {{ form.bio.errors|striptags }}
+                        {% endif %}
+                    </div>
                 </div>
 
                 <!-- Navigation Buttons -->
                 <div class="d-flex justify-content-between align-items-center pt-3 border-top">
-                    <a href="{% url 'expert_register_step1' %}" class="btn btn-outline-secondary px-4">
+                    <a href="{% url 'accounts:expert_register_step1' %}" class="btn btn-outline-secondary px-4">
                         &larr; Back
                     </a>
                     <button type="submit" class="btn btn-primary px-4 fw-bold">
@@ -98,90 +126,235 @@
 </div>
 
 <script>
-document.addEventListener("DOMContentLoaded", function () {
-    const categorySelect = document.getElementById("id_category");
-    const subcategorySelect = document.getElementById("id_subcategory");
-    const stateSelect = document.getElementById("id_state");
-    const districtSelect = document.getElementById("id_district");
-    const citySelect = document.getElementById("id_city");
+    document.addEventListener("DOMContentLoaded", function () {
+        const categorySelect = document.getElementById("id_category");
+        const subcategorySelect = document.getElementById("id_subcategory");
+        const stateSelect = document.getElementById("id_state");
+        const districtSelect = document.getElementById("id_district");
+        const citySelect = document.getElementById("id_city");
 
-    function loadSubcategories(categoryId) {
-        if (!subcategorySelect) return;
-        
-        subcategorySelect.innerHTML = '<option value="">Select Subcategory</option>';
-        if (!categoryId) return;
+        function loadSubcategories(categoryId) {
+            if (!subcategorySelect) return;
 
-        fetch(`/categories/get-subcategories/?category_id=${categoryId}`)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                console.log("Subcategory API Response:", data);
-                if (Array.isArray(data) && data.length > 0) {
-                    data.forEach(item => {
-                        const option = document.createElement("option");
-                        option.value = item.id || item.pk;
-                        option.textContent = item.name || item.title;
-                        subcategorySelect.appendChild(option);
-                    });
-                }
-            })
-            .catch(err => console.error("Error fetching subcategories:", err));
-    }
+            subcategorySelect.innerHTML = '<option value="">Select Subcategory</option>';
+            if (!categoryId) return;
 
-    if (categorySelect) {
-        categorySelect.addEventListener("change", function () {
-            loadSubcategories(this.value);
-        });
+            fetch(`/categories/get-subcategories/?category_id=${categoryId}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log("Subcategory API Response:", data);
+                    if (Array.isArray(data) && data.length > 0) {
+                        data.forEach(item => {
+                            const option = document.createElement("option");
+                            option.value = item.id || item.pk;
+                            option.textContent = item.name || item.title;
+                            subcategorySelect.appendChild(option);
+                        });
+                    }
+                })
+                .catch(err => console.error("Error fetching subcategories:", err));
+        }
 
-        // Trigger on initial page load if category is pre-selected
-        if (categorySelect.value) {
-            loadSubcategories(categorySelect.value);
+        if (categorySelect) {
+            categorySelect.addEventListener("change", function () {
+                loadSubcategories(this.value);
+            });
+
+            // Trigger on initial page load if category is pre-selected
+            if (categorySelect.value) {
+                loadSubcategories(categorySelect.value);
+            }
+        }
+
+        // Location Dropdown Handling
+        if (stateSelect) {
+            stateSelect.addEventListener("change", function () {
+                const stateId = this.value;
+                districtSelect.innerHTML = '<option value="">Select District</option>';
+                citySelect.innerHTML = '<option value="">Select City</option>';
+                if (!stateId) return;
+
+                fetch("/locations/get-districts/?state_id=" + stateId)
+                    .then(res => res.json())
+                    .then(data => {
+                        const list = data.districts || data;
+                        list.forEach(item => {
+                            const opt = document.createElement("option");
+                            opt.value = item.id;
+                            opt.textContent = item.name;
+                            districtSelect.appendChild(opt);
+                        });
+                    })
+                    .catch(err => console.error("Error fetching districts:", err));
+            });
+        }
+
+        if (districtSelect) {
+            districtSelect.addEventListener("change", function () {
+                const districtId = this.value;
+                citySelect.innerHTML = '<option value="">Select City</option>';
+                if (!districtId) return;
+
+                fetch("/locations/get-cities/?district_id=" + districtId)
+                    .then(res => res.json())
+                    .then(data => {
+                        const list = data.cities || data;
+                        list.forEach(item => {
+                            const opt = document.createElement("option");
+                            opt.value = item.id;
+                            opt.textContent = item.name;
+                            citySelect.appendChild(opt);
+                        });
+                    })
+                    .catch(err => console.error("Error fetching cities:", err));
+            });
+        }
+    });
+
+    const qualificationInput = document.getElementById("id_qualification");
+    const qualificationErrorDiv = document.getElementById("qualification-error");
+
+    const experienceInput = document.getElementById("id_experience_years");
+    const experienceErrorDiv = document.getElementById("experience-error");
+
+    // 1. Validate Qualification
+    function validateQualification() {
+        const val = qualificationInput.value.trim();
+        if (val === "") {
+            qualificationErrorDiv.textContent = "Highest qualification is required.";
+            qualificationInput.classList.add("is-invalid");
+            qualificationInput.classList.remove("is-valid");
+        } else if (val.length < 2) {
+            qualificationErrorDiv.textContent = "Qualification must be at least 2 characters long.";
+            qualificationInput.classList.add("is-invalid");
+            qualificationInput.classList.remove("is-valid");
+        } else {
+            qualificationErrorDiv.textContent = "";
+            qualificationInput.classList.remove("is-invalid");
+            qualificationInput.classList.add("is-valid");
         }
     }
 
-    // Location Dropdown Handling
-    if (stateSelect) {
-        stateSelect.addEventListener("change", function () {
-            const stateId = this.value;
-            districtSelect.innerHTML = '<option value="">Select District</option>';
-            citySelect.innerHTML = '<option value="">Select City</option>';
-            if (!stateId) return;
+    // 2. Validate Experience (Years)
+    function validateExperience() {
+        const val = experienceInput.value.trim();
+        const expNum = parseInt(val, 10);
 
-            fetch("/locations/get-districts/?state_id=" + stateId)
-                .then(res => res.json())
-                .then(data => {
-                    data.forEach(item => {
-                        const opt = document.createElement("option");
-                        opt.value = item.id;
-                        opt.textContent = item.name;
-                        districtSelect.appendChild(opt);
-                    });
-                });
-        });
+        if (val === "") {
+            experienceErrorDiv.textContent = "Years of experience is required.";
+            experienceInput.classList.add("is-invalid");
+            experienceInput.classList.remove("is-valid");
+        } else if (isNaN(expNum) || expNum < 0 || expNum > 60) {
+            experienceErrorDiv.textContent = "Please enter a realistic experience value (0-60 years).";
+            experienceInput.classList.add("is-invalid");
+            experienceInput.classList.remove("is-valid");
+        } else {
+            experienceErrorDiv.textContent = "";
+            experienceInput.classList.remove("is-invalid");
+            experienceInput.classList.add("is-valid");
+        }
     }
 
-    if (districtSelect) {
-        districtSelect.addEventListener("change", function () {
-            const districtId = this.value;
-            citySelect.innerHTML = '<option value="">Select City</option>';
-            if (!districtId) return;
-
-            fetch("/locations/get-cities/?district_id=" + districtId)
-                .then(res => res.json())
-                .then(data => {
-                    data.forEach(item => {
-                        const opt = document.createElement("option");
-                        opt.value = item.id;
-                        opt.textContent = item.name;
-                        citySelect.appendChild(opt);
-                    });
-                });
-        });
+    // Event Listeners
+    if (qualificationInput) {
+        qualificationInput.addEventListener("blur", validateQualification);
+        qualificationInput.addEventListener("input", validateQualification);
     }
-});
+
+    if (experienceInput) {
+        experienceInput.addEventListener("blur", validateExperience);
+        experienceInput.addEventListener("input", validateExperience);
+    }
+
+    const hourlyRateInput = document.getElementById("id_hourly_rate");
+    const hourlyRateErrorDiv = document.getElementById("hourly-rate-error");
+
+    function validateHourlyRate() {
+        let val = hourlyRateInput.value.trim();
+
+        // Prevent typing more than 8 digits/characters overall
+        if (val.length > 8) {
+            hourlyRateInput.value = val.slice(0, 8);
+            val = hourlyRateInput.value;
+        }
+
+        const rateNum = parseFloat(val);
+
+        if (val === "") {
+            hourlyRateErrorDiv.textContent = "Consultation fee is required.";
+            hourlyRateInput.classList.add("is-invalid");
+            hourlyRateInput.classList.remove("is-valid");
+        } else if (isNaN(rateNum)) {
+            hourlyRateErrorDiv.textContent = "Please enter a valid amount.";
+            hourlyRateInput.classList.add("is-invalid");
+            hourlyRateInput.classList.remove("is-valid");
+        } else if (rateNum < 100) {
+            hourlyRateErrorDiv.textContent = "Consultation fee must be at least ₹100.";
+            hourlyRateInput.classList.add("is-invalid");
+            hourlyRateInput.classList.remove("is-valid");
+        } else if (rateNum > 50000) {
+            hourlyRateErrorDiv.textContent = "Consultation fee cannot exceed ₹50,000.";
+            hourlyRateInput.classList.add("is-invalid");
+            hourlyRateInput.classList.remove("is-valid");
+        } else {
+            hourlyRateErrorDiv.textContent = "";
+            hourlyRateInput.classList.remove("is-invalid");
+            hourlyRateInput.classList.add("is-valid");
+        }
+    }
+
+    if (hourlyRateInput) {
+        hourlyRateInput.addEventListener("blur", validateHourlyRate);
+        hourlyRateInput.addEventListener("input", validateHourlyRate);
+    }
+
+    const bioInput = document.getElementById("id_bio");
+    const bioErrorDiv = document.getElementById("bio-error");
+    const bioCounter = document.getElementById("bio-char-counter");
+
+    // Helper to update counter without triggering errors
+    function updateBioCounter() {
+        if (bioCounter && bioInput) {
+            bioCounter.textContent = `${bioInput.value.length} / 1000`;
+        }
+    }
+
+    function validateBio() {
+        const val = bioInput.value.trim();
+
+        updateBioCounter();
+
+        if (val === "") {
+            bioErrorDiv.textContent = "Professional bio is required.";
+            bioInput.classList.add("is-invalid");
+            bioInput.classList.remove("is-valid");
+        } else if (val.length < 50) {
+            bioErrorDiv.textContent = `Bio must be at least 50 characters long. (${50 - val.length} more needed)`;
+            bioInput.classList.add("is-invalid");
+            bioInput.classList.remove("is-valid");
+        } else if (val.length > 1000) {
+            bioErrorDiv.textContent = "Bio cannot exceed 1,000 characters.";
+            bioInput.classList.add("is-invalid");
+            bioInput.classList.remove("is-valid");
+        } else {
+            bioErrorDiv.textContent = "";
+            bioInput.classList.remove("is-invalid");
+            bioInput.classList.add("is-valid");
+        }
+    }
+
+    if (bioInput) {
+        // Only validate when user interacts with the input
+        bioInput.addEventListener("blur", validateBio);
+        bioInput.addEventListener("input", validateBio);
+
+        // Initial load: ONLY set the character counter, do NOT run full validation
+        updateBioCounter();
+    }
 </script>
 {% endblock %}

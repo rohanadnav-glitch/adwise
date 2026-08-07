@@ -12,3 +12,5 @@ def get_subcategories_api(request):
         return JsonResponse(list(subcategories), safe=False)
     except Exception as e:
         return JsonResponse([], safe=False)
+
+

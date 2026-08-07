@@ -14,7 +14,7 @@
             </div>
 
             <!-- Registration Form -->
-            <form method="POST" action="{% url 'register_user' %}" novalidate>
+            <form method="POST" action="{% url 'accounts:register_user' %}" novalidate>
                 {% csrf_token %}
 
                 <!-- Non-Field Errors -->
@@ -170,11 +170,12 @@
             <div class="text-center mt-4 pt-3 border-top">
                 <p class="mb-1 text-muted small">
                     Already have an account?
-                    <a href="{% url 'login' %}" class="text-primary text-decoration-none fw-semibold">Log In</a>
+                    <a href="{% url 'accounts:login' %}" class="text-primary text-decoration-none fw-semibold">Log
+                        In</a>
                 </p>
                 <p class="mb-0 text-muted small">
                     Are you an expert?
-                    <a href="{% url 'expert_register_step1' %}"
+                    <a href="{% url 'accounts:expert_register_step1' %}"
                         class="text-primary text-decoration-none fw-semibold">Register as Expert</a>
                 </p>
             </div>
@@ -183,6 +184,7 @@
     </div>
 </div>
 
+<!-- Dynamic AJAX Dropdown JavaScript -->
 <!-- Dynamic AJAX Dropdown JavaScript -->
 <script>
     document.addEventListener("DOMContentLoaded", function () {
@@ -201,10 +203,6 @@
 
         const phoneInput = document.getElementById("id_phone_number");
         const phoneErrorDiv = document.getElementById("phone-number-error");
-
-        const passwordInput = document.getElementById("id_password");
-        const passwordErrorDiv = document.getElementById("password-error");
-
 
 
         if (firstNameInput) {
@@ -258,7 +256,6 @@
                 const value = emailInput.value.trim().toLowerCase();
                 const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
-                // Known common domain typos
                 const commonTypos = ["gmail.co", "yahoo.co", "hotmail.co", "outlook.co"];
                 const domain = value.split("@")[1];
 
@@ -307,7 +304,7 @@
             });
         }
 
-
+        // Updated Location AJAX Handlers
         if (stateSelect) {
             stateSelect.addEventListener("change", function () {
                 const stateId = this.value;
@@ -317,11 +314,11 @@
 
                 if (!stateId) return;
 
-                // Updated with namespace 'locations:'
                 fetch("/locations/get-districts/?state_id=" + stateId)
                     .then(response => response.json())
                     .then(data => {
-                        data.forEach(item => {
+                        const list = data.districts || data;
+                        list.forEach(item => {
                             const option = document.createElement("option");
                             option.value = item.id;
                             option.textContent = item.name;
@@ -340,11 +337,11 @@
 
                 if (!districtId) return;
 
-                // Updated with namespace 'locations:'
                 fetch("/locations/get-cities/?district_id=" + districtId)
                     .then(response => response.json())
                     .then(data => {
-                        data.forEach(item => {
+                        const list = data.cities || data;
+                        list.forEach(item => {
                             const option = document.createElement("option");
                             option.value = item.id;
                             option.textContent = item.name;
@@ -354,103 +351,91 @@
                     .catch(err => console.error("Error fetching cities:", err));
             });
         }
+
+        const passwordInput = document.getElementById("id_password");
+        const passwordErrorDiv = document.getElementById("password-error");
+        const togglePasswordBtn = document.getElementById("togglePassword");
+        const togglePasswordIcon = document.getElementById("togglePasswordIcon");
+
+        const eyeSVG = `<path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8M1.173 8a13 13 13 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5s3.879 1.168 5.168 2.457A13 13 13 0 0 1 14.828 8q-.086.13-.195.288c-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5s-3.879-1.168-5.168-2.457A13 13 13 0 0 1 1.172 8z"/><path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5M4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0"/>`;
+        const eyeSlashSVG = `<path d="M13.359 11.238C15.06 9.72 16 8 16 8s-3-5.5-8-5.5a7 7 0 0 0-2.79.588l.77.771A6 6 0 0 1 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13 13 13 0 0 1 14.828 8q-.086.13-.195.288c-.335.48-.83 1.12-1.465 1.755-.165.165-.337.328-.517.486z"/><path d="M11.297 9.176a3.5 3.5 0 0 0-4.474-4.474l.823.823a2.5 2.5 0 0 1 2.829 2.829zm-2.943 1.299.822.822a3.5 3.5 0 0 1-4.474-4.474l.823.823a2.5 2.5 0 0 0 2.829 2.829z"/><path d="M3.35 5.47c-.18.16-.353.322-.518.487A13 13 13 0 0 0 1.172 8s3 5.5 8 5.5c.74 0 1.455-.102 2.13-.288l.745.746a8.8 8.8 0 0 1-2.875.542C3 13.5 0 8 0 8s1.536-2.822 3.99-4.225z"/><path d="M13.646 14.354l-12-12 .708-.708 12 12z"/>`;
+
+        if (togglePasswordBtn && passwordInput) {
+            togglePasswordBtn.addEventListener("click", function () {
+                const type = passwordInput.getAttribute("type") === "password" ? "text" : "password";
+                passwordInput.setAttribute("type", type);
+                togglePasswordIcon.innerHTML = type === "text" ? eyeSlashSVG : eyeSVG;
+            });
+        }
+
+        function validatePassword() {
+            const value = passwordInput.value;
+
+            if (value === "") {
+                passwordErrorDiv.textContent = "Password is required.";
+                passwordInput.classList.add("is-invalid");
+            } else if (value.length < 8) {
+                passwordErrorDiv.textContent = "Password must be at least 8 characters long.";
+                passwordInput.classList.add("is-invalid");
+            } else if (!/[A-Z]/.test(value)) {
+                passwordErrorDiv.textContent = "Password must contain at least one uppercase letter (A-Z).";
+                passwordInput.classList.add("is-invalid");
+            } else if (!/[a-z]/.test(value)) {
+                passwordErrorDiv.textContent = "Password must contain at least one lowercase letter (a-z).";
+                passwordInput.classList.add("is-invalid");
+            } else if (!/\d/.test(value)) {
+                passwordErrorDiv.textContent = "Password must contain at least one digit (0-9).";
+                passwordInput.classList.add("is-invalid");
+            } else if (!/[@$!%*?&]/.test(value)) {
+                passwordErrorDiv.textContent = "Password must contain at least one special character (@, $, !, %, *, ?, &).";
+                passwordInput.classList.add("is-invalid");
+            } else {
+                passwordErrorDiv.textContent = "";
+                passwordInput.classList.remove("is-invalid");
+                passwordInput.classList.add("is-valid");
+            }
+        }
+
+        if (passwordInput) {
+            passwordInput.addEventListener("blur", validatePassword);
+            passwordInput.addEventListener("input", validatePassword);
+        }
+
+        const confirmPasswordInput = document.getElementById("id_confirm_password");
+        const confirmPasswordErrorDiv = document.getElementById("confirm-password-error");
+        const toggleConfirmPasswordBtn = document.getElementById("toggleConfirmPassword");
+        const toggleConfirmPasswordIcon = document.getElementById("toggleConfirmPasswordIcon");
+
+        if (toggleConfirmPasswordBtn && confirmPasswordInput && toggleConfirmPasswordIcon) {
+            toggleConfirmPasswordBtn.addEventListener("click", function () {
+                const type = confirmPasswordInput.getAttribute("type") === "password" ? "text" : "password";
+                confirmPasswordInput.setAttribute("type", type);
+                toggleConfirmPasswordIcon.innerHTML = type === "text" ? eyeSlashSVG : eyeSVG;
+            });
+        }
+
+        function validateConfirmPassword() {
+            const passwordVal = document.getElementById("id_password") ? document.getElementById("id_password").value : "";
+            const confirmVal = confirmPasswordInput.value;
+
+            if (confirmVal === "") {
+                confirmPasswordErrorDiv.textContent = "Please confirm your password.";
+                confirmPasswordInput.classList.add("is-invalid");
+            } else if (confirmVal !== passwordVal) {
+                confirmPasswordErrorDiv.textContent = "Passwords do not match.";
+                confirmPasswordInput.classList.add("is-invalid");
+                confirmPasswordInput.classList.remove("is-valid");
+            } else {
+                confirmPasswordErrorDiv.textContent = "";
+                confirmPasswordInput.classList.remove("is-invalid");
+                confirmPasswordInput.classList.add("is-valid");
+            }
+        }
+
+        if (confirmPasswordInput) {
+            confirmPasswordInput.addEventListener("blur", validateConfirmPassword);
+            confirmPasswordInput.addEventListener("input", validateConfirmPassword);
+        }
     });
-
-    const passwordInput = document.getElementById("id_password");
-    const passwordErrorDiv = document.getElementById("password-error");
-    const togglePasswordBtn = document.getElementById("togglePassword");
-    const togglePasswordIcon = document.getElementById("togglePasswordIcon");
-
-    const eyeSVG = `<path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8M1.173 8a13 13 13 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5s3.879 1.168 5.168 2.457A13 13 13 0 0 1 14.828 8q-.086.13-.195.288c-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5s-3.879-1.168-5.168-2.457A13 13 13 0 0 1 1.172 8z"/><path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5M4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0"/>`;
-
-    const eyeSlashSVG = `<path d="M13.359 11.238C15.06 9.72 16 8 16 8s-3-5.5-8-5.5a7 7 0 0 0-2.79.588l.77.771A6 6 0 0 1 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13 13 13 0 0 1 14.828 8q-.086.13-.195.288c-.335.48-.83 1.12-1.465 1.755-.165.165-.337.328-.517.486z"/><path d="M11.297 9.176a3.5 3.5 0 0 0-4.474-4.474l.823.823a2.5 2.5 0 0 1 2.829 2.829zm-2.943 1.299.822.822a3.5 3.5 0 0 1-4.474-4.474l.823.823a2.5 2.5 0 0 0 2.829 2.829z"/><path d="M3.35 5.47c-.18.16-.353.322-.518.487A13 13 13 0 0 0 1.172 8s3 5.5 8 5.5c.74 0 1.455-.102 2.13-.288l.745.746a8.8 8.8 0 0 1-2.875.542C3 13.5 0 8 0 8s1.536-2.822 3.99-4.225z"/><path d="M13.646 14.354l-12-12 .708-.708 12 12z"/>`;
-
-
-    // 1. Password Visibility Toggle
-    if (togglePasswordBtn && passwordInput) {
-        togglePasswordBtn.addEventListener("click", function () {
-            const type = passwordInput.getAttribute("type") === "password" ? "text" : "password";
-            passwordInput.setAttribute("type", type);
-
-            // Toggle eye icon class
-            togglePasswordIcon.innerHTML = type === "text" ? eyeSlashSVG : eyeSVG;
-        });
-    }
-
-    // 2. Validation Function
-    function validatePassword() {
-        const value = passwordInput.value;
-
-        if (value === "") {
-            passwordErrorDiv.textContent = "Password is required.";
-            passwordInput.classList.add("is-invalid");
-        } else if (value.length < 8) {
-            passwordErrorDiv.textContent = "Password must be at least 8 characters long.";
-            passwordInput.classList.add("is-invalid");
-        } else if (!/[A-Z]/.test(value)) {
-            passwordErrorDiv.textContent = "Password must contain at least one uppercase letter (A-Z).";
-            passwordInput.classList.add("is-invalid");
-        } else if (!/[a-z]/.test(value)) {
-            passwordErrorDiv.textContent = "Password must contain at least one lowercase letter (a-z).";
-            passwordInput.classList.add("is-invalid");
-        } else if (!/\d/.test(value)) {
-            passwordErrorDiv.textContent = "Password must contain at least one digit (0-9).";
-            passwordInput.classList.add("is-invalid");
-        } else if (!/[@$!%*?&]/.test(value)) {
-            passwordErrorDiv.textContent = "Password must contain at least one special character (@, $, !, %, *, ?, &).";
-            passwordInput.classList.add("is-invalid");
-        } else {
-            passwordErrorDiv.textContent = "";
-            passwordInput.classList.remove("is-invalid");
-            passwordInput.classList.add("is-valid");
-        }
-    }
-
-    // Trigger on both 'blur' (clicking outside) and 'input' (live typing)
-    if (passwordInput) {
-        passwordInput.addEventListener("blur", validatePassword);
-        passwordInput.addEventListener("input", validatePassword);
-    }
-
-
-    const confirmPasswordInput = document.getElementById("id_confirm_password");
-    const confirmPasswordErrorDiv = document.getElementById("confirm-password-error");
-    const toggleConfirmPasswordBtn = document.getElementById("toggleConfirmPassword");
-    const toggleConfirmPasswordIcon = document.getElementById("toggleConfirmPasswordIcon");
-
-    // 1. Confirm Password Eye Toggle
-    if (toggleConfirmPasswordBtn && confirmPasswordInput && toggleConfirmPasswordIcon) {
-        toggleConfirmPasswordBtn.addEventListener("click", function () {
-            const type = confirmPasswordInput.getAttribute("type") === "password" ? "text" : "password";
-            confirmPasswordInput.setAttribute("type", type);
-            toggleConfirmPasswordIcon.innerHTML = type === "text" ? eyeSlashSVG : eyeSVG;
-        });
-    }
-
-    // 2. Real-Time Password Matching Validation
-    function validateConfirmPassword() {
-        const passwordVal = document.getElementById("id_password") ? document.getElementById("id_password").value : "";
-        const confirmVal = confirmPasswordInput.value;
-
-        if (confirmVal === "") {
-            confirmPasswordErrorDiv.textContent = "Please confirm your password.";
-            confirmPasswordInput.classList.add("is-invalid");
-        } else if (confirmVal !== passwordVal) {
-            confirmPasswordErrorDiv.textContent = "Passwords do not match.";
-            confirmPasswordInput.classList.add("is-invalid");
-            confirmPasswordInput.classList.remove("is-valid");
-        } else {
-            confirmPasswordErrorDiv.textContent = "";
-            confirmPasswordInput.classList.remove("is-invalid");
-            confirmPasswordInput.classList.add("is-valid");
-        }
-    }
-
-    if (confirmPasswordInput) {
-        confirmPasswordInput.addEventListener("blur", validateConfirmPassword);
-        confirmPasswordInput.addEventListener("input", validateConfirmPassword);
-    }
-
-
 </script>
 {% endblock %}

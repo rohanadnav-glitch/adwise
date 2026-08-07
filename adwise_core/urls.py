@@ -1,15 +1,13 @@
 from django.contrib import admin
 from django.urls import path, include
-from django.shortcuts import redirect
+from django.views.generic import TemplateView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('accounts/', include('apps.accounts.urls')),
+    path('accounts/', include(('apps.accounts.urls', 'accounts'), namespace='accounts')),
     path('categories/', include('apps.categories.urls')),
-    # main urls.py
     path('bookings/', include(('apps.bookings.urls', 'bookings'), namespace='bookings')),
-    path('locations/', include('apps.locations.urls', namespace='locations')),
-    path('', lambda request: redirect('login')),
-    # adwise_core/urls.py
     path('locations/', include(('apps.locations.urls', 'locations'), namespace='locations')),
+    path('', TemplateView.as_view(template_name='home.html'), name='home'),
+
 ]

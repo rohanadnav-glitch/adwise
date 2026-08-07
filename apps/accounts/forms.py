@@ -1,7 +1,7 @@
 import re
 from django import forms
 from django.contrib.auth import get_user_model
-
+from decimal import Decimal
 # Import models directly, NOT views
 from .models import UserRole, ExpertProfile
 from apps.categories.models import Category, SubCategory
@@ -383,13 +383,35 @@ class ExpertStep2Form(forms.Form):
         widget=forms.Select(attrs={'class': 'form-select', 'id': 'id_subcategory'})
     )
     qualification = forms.CharField(
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. Master of Laws (LL.M)'})
+        max_length=100,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control', 
+            'placeholder': 'e.g. Master of Laws (LL.M)',
+            'id': 'id_qualification'
+        })
     )
     experience_years = forms.IntegerField(
-        widget=forms.NumberInput(attrs={'class': 'form-control', 'min': 0})
+        min_value=0,
+        max_value=60,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control', 
+            'placeholder': 'e.g. 5',
+            'id': 'id_experience_years'
+        })
     )
     hourly_rate = forms.DecimalField(
-        widget=forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'})
+    min_value=Decimal('100.00'),
+    max_value=Decimal('50000.00'),
+    decimal_places=2,
+    max_digits=8,
+    widget=forms.NumberInput(attrs={
+        'class': 'form-control', 
+        'step': '0.01',
+        'min': '100',
+        'max': '50000',
+        'placeholder': 'e.g. 500.00',
+        'id': 'id_hourly_rate'
+    })
     )
     state = forms.ModelChoiceField(
         queryset=State.objects.all(),
@@ -410,8 +432,45 @@ class ExpertStep2Form(forms.Form):
         widget=forms.Select(attrs={'class': 'form-select', 'id': 'id_city'})
     )
     bio = forms.CharField(
-        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 4, 'placeholder': 'Tell clients about your expertise...'})
+        min_length=50,
+        max_length=1000,
+        widget=forms.Textarea(attrs={
+            'class': 'form-control', 
+            'rows': 4, 
+            'placeholder': 'Tell clients about your expertise...',
+            'id': 'id_bio',
+            'maxlength': '1000'
+        })
     )
+
+    def clean_qualification(self):
+        qualification = self.cleaned_data.get('qualification', '').strip()
+        if not qualification:
+            raise forms.ValidationError("Highest qualification is required.")
+        if len(qualification) < 2:
+            raise forms.ValidationError("Qualification must be at least 2 characters long.")
+        return qualification
+
+    def clean_experience_years(self):
+        experience = self.cleaned_data.get('experience_years')
+        if experience is None:
+            raise forms.ValidationError("Years of experience is required.")
+        if experience < 0 or experience > 60:
+            raise forms.ValidationError("Please enter a realistic experience value between 0 and 60 years.")
+        return experience
+
+    def clean_bio(self):
+        bio = self.cleaned_data.get('bio', '').strip()
+
+        if not bio:
+            raise forms.ValidationError("Professional bio is required.")
+        if len(bio) < 50:
+            raise forms.ValidationError("Bio must be at least 50 characters long to provide clients sufficient context.")
+        if len(bio) > 1000:
+            raise forms.ValidationError("Bio cannot exceed 1,000 characters.")
+
+        return bio
+
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

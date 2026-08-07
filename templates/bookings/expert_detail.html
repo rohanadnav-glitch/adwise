@@ -56,7 +56,7 @@
             <!-- EDIT PROFILE BUTTON (Visible when logged in expert views their own profile) -->
             {% if user.is_authenticated and user == expert.user %}
                 <div class="mt-4 pt-3 border-top d-grid">
-                    <a href="{% url 'edit_expert_profile' %}" class="btn btn-outline-primary fw-bold py-2">
+                    <a href="{% url 'accounts:edit_expert_profile' %}" class="btn btn-outline-primary fw-bold py-2">
                         <i class="fa-solid fa-pen-to-square me-2"></i>Edit Profile & Rates
                     </a>
                 </div>
@@ -118,7 +118,7 @@
 
                                 {% if user.is_authenticated %}
                                     {% if user.role == 'USER' %}
-                                        <a href="{% url 'request_session' slot.id %}" class="btn btn-primary btn-sm w-100 fw-bold shadow-sm">
+                                        <a href="{% url 'bookings:request_session' slot.id %}" class="btn btn-primary btn-sm w-100 fw-bold shadow-sm">
                                             Request Session
                                         </a>
                                     {% else %}
@@ -127,7 +127,7 @@
                                         </button>
                                     {% endif %}
                                 {% else %}
-                                    <a href="{% url 'login' %}?next={{ request.path }}" class="btn btn-outline-primary btn-sm w-100 fw-bold">
+                                    <a href="{% url 'accounts:login' %}?next={{ request.path }}" class="btn btn-outline-primary btn-sm w-100 fw-bold">
                                         Login to Book
                                     </a>
                                 {% endif %}

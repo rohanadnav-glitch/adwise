@@ -1,0 +1,310 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Adwise - Ask. Connect. Learn.{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-section position-relative py-5 overflow-hidden">
+    <div class="container py-lg-4">
+        <div class="row align-items-center gy-5">
+
+            <!-- Left Content Column -->
+            <div class="col-lg-6 pe-lg-5">
+                <!-- Top Pill Badge -->
+                <div class="d-inline-flex align-items-center gap-2 bg-white border border-primary-subtle rounded-pill px-3 py-1 mb-3 shadow-xs">
+                    <span class="badge-pulse-dot"></span>
+                    <span class="small fw-semibold text-primary tracking-wide text-uppercase" style="font-size: 0.75rem;">Welcome to Adwise</span>
+                </div>
+
+                <!-- Hero Heading with Gradient Accent -->
+                <h1 class="display-3 fw-black text-dark lh-sm mb-3 tracking-tight">
+                    Ask. Connect.<br>
+                    <span class="gradient-text">Learn.</span>
+                </h1>
+
+                <!-- Subtitle -->
+                <p class="lead text-secondary mb-4 fs-5 fw-normal pe-lg-4" style="line-height: 1.6;">
+                    Connect with verified experts, get answers to your questions, and solve problems smarter.
+                </p>
+
+                <!-- Action Cards/Buttons -->
+                <div class="d-flex flex-sm-row flex-column gap-3 mb-5">
+                    <a href="{% url 'accounts:register_user' %}" class="btn-action-card primary-card shadow-sm text-decoration-none">
+                        <div>
+                            <div class="fw-bold fs-6">I'm a User</div>
+                            <div class="small opacity-85 fw-normal">Ask Questions</div>
+                        </div>
+                        <i class="fa-solid fa-arrow-right action-arrow"></i>
+                    </a>
+
+                    <a href="{% url 'accounts:expert_register_step1' %}" class="btn-action-card secondary-card shadow-sm text-decoration-none">
+                        <div>
+                            <div class="fw-bold fs-6 text-dark">I'm an Expert</div>
+                            <div class="small text-muted fw-normal">Share Knowledge</div>
+                        </div>
+                        <i class="fa-solid fa-arrow-right action-arrow text-secondary"></i>
+                    </a>
+                </div>
+
+                <!-- Feature Cards Row -->
+                <div class="row g-3 pt-3 border-top border-light-subtle">
+                    <div class="col-sm-4">
+                        <div class="feature-card p-2 rounded-3">
+                            <i class="fa-solid fa-user-check text-primary fs-5 mb-1"></i>
+                            <h6 class="fw-bold text-dark mb-0 small">Verified Experts</h6>
+                            <small class="text-muted" style="font-size: 0.78rem;">Vetted professionals</small>
+                        </div>
+                    </div>
+                    <div class="col-sm-4">
+                        <div class="feature-card p-2 rounded-3">
+                            <i class="fa-solid fa-calendar-check text-primary fs-5 mb-1"></i>
+                            <h6 class="fw-bold text-dark mb-0 small">Easy Booking</h6>
+                            <small class="text-muted" style="font-size: 0.78rem;">Direct scheduling</small>
+                        </div>
+                    </div>
+                    <div class="col-sm-4">
+                        <div class="feature-card p-2 rounded-3">
+                            <i class="fa-solid fa-shield-halved text-primary fs-5 mb-1"></i>
+                            <h6 class="fw-bold text-dark mb-0 small">Secure Platform</h6>
+                            <small class="text-muted" style="font-size: 0.78rem;">Private consultations</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Hero Graphic with Image Background & Overlay Badges -->
+            <div class="col-lg-6 position-relative text-center">
+                <div class="hero-graphic-wrapper position-relative d-inline-block w-100 p-2">
+
+                    <!-- Background Banner Image -->
+                    <img src="{% static 'images/hero-graphic.png' %}" alt="Adwise Connect"
+                        class="img-fluid w-100 rounded-3">
+
+                    <!-- Floating Pill 1: Career Advice -->
+                    <div
+                        class="floating-pill pill-top-left bg-white shadow-sm rounded-pill px-3 py-2 d-flex align-items-center gap-2 border">
+                        <i class="fa-solid fa-lightbulb text-warning"></i>
+                        <span class="small fw-semibold text-dark">Career Advice</span>
+                    </div>
+
+                    <!-- Floating Pill 2: Tech Support -->
+                    <div
+                        class="floating-pill pill-top-right bg-white shadow-sm rounded-pill px-3 py-2 d-flex align-items-center gap-2 border">
+                        <i class="fa-solid fa-laptop-code text-primary"></i>
+                        <span class="small fw-semibold text-dark">Tech Support</span>
+                    </div>
+
+                    <!-- Floating Pill 3: Personal Growth -->
+                    <div
+                        class="floating-pill pill-mid-left bg-white shadow-sm rounded-pill px-3 py-2 d-flex align-items-center gap-2 border">
+                        <i class="fa-solid fa-seedling text-success"></i>
+                        <span class="small fw-semibold text-dark">Personal Growth</span>
+                    </div>
+
+                    <!-- Floating Pill 4: Business Help -->
+                    <div
+                        class="floating-pill pill-bottom-right bg-white shadow-sm rounded-pill px-3 py-2 d-flex align-items-center gap-2 border">
+                        <i class="fa-solid fa-chart-line text-danger"></i>
+                        <span class="small fw-semibold text-dark">Business Help</span>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+</section>
+
+<!-- Bottom Section: How Adwise Works -->
+<section class="py-4 bg-light border-top border-bottom">
+    <div class="container">
+        <div class="text-center mb-3">
+            <span class="text-muted small fw-semibold text-uppercase tracking-wider">How Adwise Works</span>
+        </div>
+        <div class="row g-4 justify-content-center text-center">
+            <div class="col-md-4">
+                <div class="d-flex align-items-center justify-content-center gap-2 mb-1">
+                    <span class="badge bg-primary rounded-circle">1</span>
+                    <h6 class="fw-bold mb-0">Browse Experts</h6>
+                </div>
+                <p class="text-muted small mb-0">Find verified specialists across legal, tech, business, and education.
+                </p>
+            </div>
+            <div class="col-md-4">
+                <div class="d-flex align-items-center justify-content-center gap-2 mb-1">
+                    <span class="badge bg-primary rounded-circle">2</span>
+                    <h6 class="fw-bold mb-0">Book a Session</h6>
+                </div>
+                <p class="text-muted small mb-0">Select a convenient time slot that fits your schedule.</p>
+            </div>
+            <div class="col-md-4">
+                <div class="d-flex align-items-center justify-content-center gap-2 mb-1">
+                    <span class="badge bg-primary rounded-circle">3</span>
+                    <h6 class="fw-bold mb-0">Get Real Guidance</h6>
+                </div>
+                <p class="text-muted small mb-0">Connect 1-on-1 and solve your problems with expert assistance.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+/* 1. Page Background & Typography */
+.hero-section {
+    background: radial-gradient(100% 50% at 50% 0%, rgba(13, 110, 253, 0.05) 0%, rgba(255, 255, 255, 1) 100%);
+}
+
+.tracking-tight {
+    letter-spacing: -0.03em;
+}
+
+.fw-black {
+    font-weight: 800;
+}
+
+.gradient-text {
+    background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 50%, #6610f2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* 2. Badge Pulse Dot */
+.badge-pulse-dot {
+    width: 7px;
+    height: 7px;
+    background-color: #0d6efd;
+    border-radius: 50%;
+    box-shadow: 0 0 0 0 rgba(13, 110, 253, 0.5);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(13, 110, 253, 0.6); }
+    70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(13, 110, 253, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(13, 110, 253, 0); }
+}
+
+/* 3. Action Cards/Buttons */
+.btn-action-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.85rem 1.25rem;
+    border-radius: 12px;
+    min-width: 185px;
+    transition: all 0.25s ease-in-out;
+}
+
+.primary-card {
+    background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
+    color: #ffffff;
+    border: 1px solid transparent;
+}
+
+.primary-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 25px -5px rgba(13, 110, 253, 0.35) !important;
+    color: #ffffff;
+}
+
+.secondary-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+}
+
+.secondary-card:hover {
+    transform: translateY(-3px);
+    border-color: #cbd5e1;
+    box-shadow: 0 12px 20px -5px rgba(0, 0, 0, 0.08) !important;
+}
+
+.action-arrow {
+    font-size: 0.85rem;
+    transition: transform 0.25s ease;
+}
+
+.btn-action-card:hover .action-arrow {
+    transform: translateX(4px);
+}
+
+/* 4. Hero Graphic Ambient Glow & Drop Shadow */
+.hero-graphic-wrapper {
+    max-width: 520px;
+    margin: 0 auto;
+}
+
+.hero-graphic-wrapper::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 85%;
+    height: 85%;
+    background: radial-gradient(circle, rgba(13, 110, 253, 0.18) 0%, rgba(255, 255, 255, 0) 70%);
+    border-radius: 50%;
+    z-index: 1;
+    filter: blur(25px);
+}
+
+.hero-graphic-wrapper img {
+    position: relative;
+    z-index: 2;
+    filter: drop-shadow(0px 15px 30px rgba(13, 110, 253, 0.15));
+}
+
+/* 5. Floating Pills Depth & Glassmorphism */
+.floating-pill {
+    position: absolute;
+    z-index: 5;
+    background: rgba(255, 255, 255, 0.92) !important;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(226, 232, 240, 0.8) !important;
+    box-shadow: 0 12px 24px -6px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.03) !important;
+    animation: float 4s ease-in-out infinite;
+    white-space: nowrap;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.floating-pill:hover {
+    transform: translateY(-4px) scale(1.03);
+    box-shadow: 0 20px 30px -10px rgba(13, 110, 253, 0.2) !important;
+    border-color: rgba(13, 110, 253, 0.3) !important;
+}
+
+/* Precise Floating Positions */
+.pill-top-left { top: 2%; left: -2%; animation-delay: 0s; }
+.pill-top-right { top: 8%; right: -2%; animation-delay: 1s; }
+.pill-mid-left { top: 42%; left: -6%; animation-delay: 2s; }
+.pill-bottom-right { bottom: 2%; right: 2%; animation-delay: 1.5s; }
+
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-7px); }
+}
+
+/* 6. Feature Cards & How It Works Cards */
+.feature-card {
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    transition: all 0.2s ease;
+}
+
+.feature-card:hover {
+    background: #ffffff;
+    border-color: rgba(13, 110, 253, 0.3);
+    box-shadow: 0 6px 15px -3px rgba(0, 0, 0, 0.05);
+}
+
+.step-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border: 1px solid rgba(226, 232, 240, 0.6);
+}
+
+.step-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05) !important;
+}
+</style>
+{% endblock %}

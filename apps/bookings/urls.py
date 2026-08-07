@@ -3,7 +3,6 @@ from . import views
 
 
 app_name = 'bookings'
-app_name = 'locations'
 
 urlpatterns = [
     # Schedule Management

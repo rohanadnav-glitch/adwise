@@ -1,6 +1,6 @@
 from django.urls import path
 from . import views
-
+app_name = 'accounts'
 urlpatterns = [
     # Auth
     path('login/', views.login_view, name='login'),
@@ -17,6 +17,6 @@ urlpatterns = [
     # Role-based Dashboards
     path('dashboard/user/', views.user_dashboard_view, name='user_dashboard'),
     path('dashboard/expert/', views.expert_dashboard_view, name='expert_dashboard'),
-
+    path('expert/profile/edit/', views.edit_expert_profile_view, name='edit_expert_profile'),
     path('expert/edit-profile/', views.edit_expert_profile_view, name='edit_expert_profile')
 ]

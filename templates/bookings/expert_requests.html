@@ -38,8 +38,8 @@
                         </td>
                         <td>
                             {% if req.status == 'REQUESTED' %}
-                                <a href="{% url 'expert_action' req.id 'accept' %}" class="btn btn-success btn-sm fw-bold">Accept</a>
-                                <a href="{% url 'expert_action' req.id 'reject' %}" class="btn btn-danger btn-sm fw-bold ms-1">Reject</a>
+                                <a href="{% url 'bookings:expert_action' req.id 'accept' %}" class="btn btn-success btn-sm fw-bold">Accept</a>
+                                <a href="{% url 'bookings:expert_action' req.id 'reject' %}" class="btn btn-danger btn-sm fw-bold ms-1">Reject</a>
                                 
                                 <!-- Postpone Modal Trigger Button -->
                                 <button type="button" class="btn btn-warning btn-sm fw-bold ms-1" data-bs-toggle="modal" data-bs-target="#postponeModal{{ req.id }}">
@@ -50,7 +50,7 @@
                                 <div class="modal fade" id="postponeModal{{ req.id }}" tabindex="-1" aria-hidden="true">
                                   <div class="modal-dialog">
                                     <div class="modal-content">
-                                      <form method="POST" action="{% url 'expert_action' req.id 'postpone' %}">
+                                      <form method="POST" action="{% url 'bookings:expert_action' req.id 'postpone' %}">
                                         {% csrf_token %}
                                         <div class="modal-header">
                                           <h5 class="modal-title fw-bold">Propose New Session Time</h5>
