@@ -1,13 +1,13 @@
 from django.urls import path
 from . import views
 
-
 app_name = 'bookings'
 
 urlpatterns = [
-    # Schedule Management
+    # Schedule Management & Calendar API
     path('schedule/', views.schedule_manager_view, name='schedule_manager'),
     path('schedule/delete/<int:slot_id>/', views.delete_slot_view, name='delete_slot'),
+    path('api/calendar-events/', views.get_expert_calendar_events_api, name='get_expert_calendar_events_api'),
     
     # Search Engine & Detail
     path('search/', views.search_experts_view, name='search_experts'),
@@ -28,5 +28,4 @@ urlpatterns = [
 
     path('review/submit/<int:booking_id>/', views.submit_review_view, name='submit_review'),
     path('api/subcategories/', views.get_subcategories_api, name='get_subcategories_api'),
-
 ]

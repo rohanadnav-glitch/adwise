@@ -12,26 +12,44 @@ from django.contrib.auth import get_user_model
 
 
 class ExpertAvailability(models.Model):
+    DAY_CHOICES = (
+        (0, 'Monday'),
+        (1, 'Tuesday'),
+        (2, 'Wednesday'),
+        (3, 'Thursday'),
+        (4, 'Friday'),
+        (5, 'Saturday'),
+        (6, 'Sunday'),
+    )
+
     expert = models.ForeignKey(
         ExpertProfile, 
         on_delete=models.CASCADE, 
         related_name='availabilities'
     )
-    date = models.DateField(db_index=True)
+    
+    # Recurring vs One-time toggle
+    is_recurring = models.BooleanField(default=False, db_index=True)
+    day_of_week = models.IntegerField(choices=DAY_CHOICES, null=True, blank=True, db_index=True)
+    
+    # Specific date (Optional if recurring)
+    date = models.DateField(null=True, blank=True, db_index=True)
+    
     start_time = models.TimeField()
     end_time = models.TimeField()
     is_booked = models.BooleanField(default=False, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ['date', 'start_time']
+        ordering = ['date', 'day_of_week', 'start_time']
         verbose_name_plural = "Expert Availabilities"
-        unique_together = ('expert', 'date', 'start_time')
 
     def __str__(self):
         status = "Booked" if self.is_booked else "Available"
+        if self.is_recurring and self.day_of_week is not None:
+            day_name = dict(self.DAY_CHOICES).get(self.day_of_week)
+            return f"{self.expert.user.get_full_name()} | Every {day_name} [{self.start_time.strftime('%H:%M')} - {self.end_time.strftime('%H:%M')}] ({status})"
         return f"{self.expert.user.get_full_name()} | {self.date} [{self.start_time.strftime('%H:%M')} - {self.end_time.strftime('%H:%M')}] ({status})"
-
 
 class SessionStatus(models.TextChoices):
     REQUESTED = 'REQUESTED', 'Requested'

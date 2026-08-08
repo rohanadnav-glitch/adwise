@@ -3,98 +3,337 @@
 {% block title %}Schedule Availability - Adwise{% endblock %}
 
 {% block content %}
-<!-- Header Section -->
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <h3 class="fw-bold m-0"><i class="fa-solid fa-clock text-primary me-2"></i>My Consultation Schedule</h3>
-        <p class="text-muted m-0 mt-1">
-            Current Fee: 
-            <span class="badge bg-success fs-6">
-                ₹{{ expert_profile.hourly_rate }}/hr
-            </span>
-        </p>
+<!-- FullCalendar Stylesheet -->
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css" rel="stylesheet" />
+
+<div class="container-fluid py-2">
+    <!-- Header Section -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+        <div>
+            <h3 class="fw-bold m-0"><i class="fa-solid fa-clock text-primary me-2"></i>My Consultation Schedule</h3>
+            <p class="text-muted m-0 mt-1">
+                Current Fee:
+                <span class="badge bg-success fs-6">
+                    ₹{{ expert_profile.hourly_rate }}/hr
+                </span>
+            </p>
+        </div>
+        <a href="{% url 'accounts:edit_expert_profile' %}" class="btn btn-outline-primary btn-sm fw-bold">
+            <i class="fa-solid fa-pen-to-square me-1"></i> Update Fee & Bio
+        </a>
     </div>
-    <a href="{% url 'accounts:edit_expert_profile' %}" class="btn btn-outline-primary btn-sm fw-bold">
-        <i class="fa-solid fa-pen-to-square me-1"></i> Update Fee & Bio
-    </a>
+
+    <!-- Updated Legend Bar -->
+    <div class="card border-0 shadow-xs mb-3">
+        <div class="card-body py-2 d-flex flex-wrap align-items-center gap-3 fs-7 fw-medium">
+            <div class="d-flex align-items-center gap-1">
+                <span class="legend-box" style="background-color: #0d6efd;"></span> Available Slot
+            </div>
+            <div class="d-flex align-items-center gap-1">
+                <span class="legend-box" style="background-color: #fd7e14;"></span> New Request (Needs Review)
+            </div>
+            <div class="d-flex align-items-center gap-1">
+                <span class="legend-box" style="background-color: #ffc107;"></span> Payment Pending
+            </div>
+            <div class="d-flex align-items-center gap-1">
+                <span class="legend-box" style="background-color: #198754;"></span> Confirmed & Paid
+            </div>
+            <div class="d-flex align-items-center gap-1">
+                <span class="legend-box" style="background-color: #495057;"></span> Completed Session
+            </div>
+        </div>
+    </div>
+    
+    <!-- Interactive Calendar Card -->
+    <div class="card shadow-sm border-0 p-3">
+        <div id="calendar"></div>
+    </div>
 </div>
 
-<div class="row g-4">
-    <!-- Left Column: Add Available Slot Form -->
-    <div class="col-md-4">
-        <div class="card shadow-sm border-0 p-4">
-            <h5 class="fw-bold mb-3"><i class="fa-solid fa-plus-circle text-primary me-1"></i>Add Available Slot</h5>
-            
-            <form method="POST" action="{% url 'bookings:schedule_manager' %}">
+<!-- Modal: Add Slot with Start Time, End Time, and Chunking -->
+<div class="modal fade" id="addSlotModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-bottom">
+                <h5 class="modal-header-title fw-bold text-dark mb-0">Add Availability Window</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="addSlotForm" method="POST" action="{% url 'bookings:schedule_manager' %}">
                 {% csrf_token %}
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">Date</label>
-                    <input type="date" name="date" class="form-control" required>
+                <div class="modal-body p-4">
+
+                    <!-- Selected Date Display -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-secondary small">Selected Date</label>
+                        <input type="date" name="date" id="modal_date_input" class="form-control" required readonly>
+                    </div>
+
+                    <!-- Recurrence Option -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-secondary small">Recurrence Option</label>
+                        <div class="d-flex gap-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="slot_type" id="modal_type_once"
+                                    value="one_time" checked>
+                                <label class="form-check-label small" for="modal_type_once">Only for this date</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="slot_type" id="modal_type_recurring"
+                                    value="recurring">
+                                <label class="form-check-label small" for="modal_type_recurring"
+                                    id="modal_recurring_label">Every Week on this day</label>
+                            </div>
+                        </div>
+                        <input type="hidden" name="day_of_week" id="modal_day_of_week_input">
+                    </div>
+
+                    <!-- Explicit Start & End Time -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-semibold text-secondary small">Start Time</label>
+                            <input type="time" name="start_time" id="modal_start_time" class="form-control" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold text-secondary small">End Time</label>
+                            <input type="time" name="end_time" id="modal_end_time" class="form-control" required>
+                        </div>
+                    </div>
+
+                    <!-- Chunking / Split Strategy -->
+                    <div class="mb-2">
+                        <label class="form-label fw-semibold text-secondary small">Split Time Range Into</label>
+                        <select name="chunk_minutes" id="modal_chunk_minutes" class="form-select">
+                            <option value="60" selected>60-Minute Consecutive Slots</option>
+                            <option value="30">30-Minute Consecutive Slots</option>
+                            <option value="45">45-Minute Consecutive Slots</option>
+                            <option value="none">Single Custom Slot (Exact Start/End Time)</option>
+                        </select>
+                        <small class="text-muted fs-7 mt-1 d-block">
+                            E.g. 10:00 AM to 12:00 PM split into 30-min slots generates 4 separate bookable slots.
+                        </small>
+                    </div>
+
                 </div>
-                
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">Start Time</label>
-                    <input type="time" name="start_time" class="form-control" required>
+                <div class="modal-footer border-top bg-light">
+                    <button type="button" class="btn btn-outline-secondary btn-sm"
+                        data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary btn-sm px-4 fw-bold">Add Availability</button>
                 </div>
-                
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">End Time</label>
-                    <input type="time" name="end_time" class="form-control" required>
-                </div>
-                
-                <button type="submit" class="btn btn-primary w-100 fw-bold">
-                    <i class="fa-solid fa-plus me-1"></i> Add Schedule Slot
-                </button>
             </form>
         </div>
     </div>
+</div>
 
-    <!-- Right Column: Upcoming Schedules Table -->
-    <div class="col-md-8">
-        <div class="card shadow-sm border-0 p-4">
-            <h5 class="fw-bold mb-3"><i class="fa-solid fa-calendar-days text-primary me-1"></i>Upcoming Schedules</h5>
-            
-            {% if slots %}
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Date</th>
-                                <th>Time Range</th>
-                                <th>Status</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for slot in slots %}
-                            <tr>
-                                <td><strong>{{ slot.date|date:"D, d M Y" }}</strong></td>
-                                <td>{{ slot.start_time|time:"h:i A" }} - {{ slot.end_time|time:"h:i A" }}</td>
-                                <td>
-                                    {% if slot.is_booked %}
-                                        <span class="badge bg-danger">Booked</span>
-                                    {% else %}
-                                        <span class="badge bg-success">Available</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if slot.is_booked %}
-                                        <span class="text-muted small">Locked</span>
-                                    {% else %}
-                                        <a href="{% url 'bookings:delete_slot' slot.id %}" class="btn btn-outline-danger btn-sm" onclick="return confirm('Are you sure you want to delete this available slot?');">
-                                            <i class="fa-solid fa-trash"></i> Delete
-                                        </a>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+<!-- Modal: View Booking Details & Instant Actions -->
+<div class="modal fade" id="viewBookingModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-bottom bg-light">
+                <h5 class="modal-header-title fw-bold text-dark mb-0">
+                    <i class="fa-solid fa-user-check text-primary me-2"></i>Session Details
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="mb-3">
+                    <label class="text-muted small fw-semibold text-uppercase">Client Name</label>
+                    <h6 class="fw-bold text-dark mb-0" id="detail_client_name">-</h6>
                 </div>
-            {% else %}
-                <p class="text-muted m-0">You haven't added any schedule slots yet. Use the form on the left to add your availability.</p>
-            {% endif %}
+                <div class="mb-3">
+                    <label class="text-muted small fw-semibold text-uppercase">Client Email</label>
+                    <p class="mb-0 text-dark" id="detail_client_email">-</p>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-6">
+                        <label class="text-muted small fw-semibold text-uppercase">Date & Time</label>
+                        <p class="mb-0 text-dark small fw-medium" id="detail_session_time">-</p>
+                    </div>
+                    <div class="col-6">
+                        <label class="text-muted small fw-semibold text-uppercase">Status</label>
+                        <div>
+                            <span class="badge" id="detail_payment_badge">Pending</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Video Link Container (Visible when Paid/Confirmed) -->
+                <div class="mb-2 d-none" id="meeting_link_container">
+                    <label class="text-muted small fw-semibold text-uppercase">Meeting Room</label>
+                    <div>
+                        <a href="#" id="detail_meeting_link" target="_blank"
+                            class="btn btn-primary btn-sm w-100 fw-bold">
+                            <i class="fa-solid fa-video me-1"></i> Join Video Consultation
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Quick Action Buttons Container (Visible when Request is Pending) -->
+                <div class="d-none pt-3 mt-2 border-top" id="quick_action_container">
+                    <label class="text-muted small fw-semibold text-uppercase mb-2 d-block">Take Action</label>
+                    <div class="d-flex gap-2">
+                        <a href="#" id="action_accept_btn" class="btn btn-success btn-sm flex-fill fw-bold">
+                            <i class="fa-solid fa-check me-1"></i> Accept Request
+                        </a>
+                        <a href="#" id="action_reject_btn" class="btn btn-outline-danger btn-sm flex-fill fw-bold">
+                            <i class="fa-solid fa-xmark me-1"></i> Reject Request
+                        </a>
+                    </div>
+                </div>
+
+            </div>
+            <div class="modal-footer border-top bg-light py-2">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+            </div>
         </div>
     </div>
 </div>
+
+<!-- FullCalendar JS Script -->
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const calendarEl = document.getElementById('calendar');
+        const addModal = new bootstrap.Modal(document.getElementById('addSlotModal'));
+
+        const calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'timeGridWeek',
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'timeGridWeek,dayGridMonth'
+            },
+            allDaySlot: false,        // Hides the empty all-day row completely
+            slotDuration: '00:30:00', // Allows selecting 30-minute grids
+            slotMinTime: '06:00:00',  // Calendar starts display at 6 AM
+            slotMaxTime: '23:00:00',  // Calendar ends display at 11 PM
+            selectable: true,
+            selectMirror: true,
+            editable: false,
+            dayMaxEvents: true,
+            events: "{% url 'bookings:get_expert_calendar_events_api' %}",
+            
+            // Prevent selecting past dates
+            selectAllow: function (selectInfo) {
+                const now = new Date();
+                now.setHours(0, 0, 0, 0);
+                return selectInfo.start >= now;
+            },
+
+            // Drag/click time selection to auto-fill Start & End times
+            select: function (info) {
+                const selectedDate = info.startStr.split('T')[0];
+
+                // Extract HH:MM start and end times
+                let startTime = info.startStr.split('T')[1] ? info.startStr.split('T')[1].substring(0, 5) : "09:00";
+                let endTime = info.endStr.split('T')[1] ? info.endStr.split('T')[1].substring(0, 5) : "10:00";
+
+                const dateObj = new Date(selectedDate);
+                const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                const dayName = days[dateObj.getUTCDay()];
+                const djangoDayIndex = (dateObj.getUTCDay() + 6) % 7;
+
+                document.getElementById('modal_date_input').value = selectedDate;
+                document.getElementById('modal_start_time').value = startTime;
+                document.getElementById('modal_end_time').value = endTime;
+                document.getElementById('modal_day_of_week_input').value = djangoDayIndex;
+                document.getElementById('modal_recurring_label').textContent = `Every ${dayName}`;
+
+                addModal.show();
+            },
+
+            // Click an existing event on calendar
+            eventClick: function (info) {
+                const props = info.event.extendedProps;
+
+                // IF CLICKED A BOOKED / REQUESTED SESSION
+                if (props.is_booked) {
+                    const bookingModal = new bootstrap.Modal(document.getElementById('viewBookingModal'));
+
+                    document.getElementById('detail_client_name').textContent = props.client_name;
+                    document.getElementById('detail_client_email').textContent = props.client_email;
+                    document.getElementById('detail_session_time').textContent = `${props.session_date} (${props.session_time})`;
+
+                    const badge = document.getElementById('detail_payment_badge');
+                    badge.textContent = props.payment_status;
+
+                    const meetingContainer = document.getElementById('meeting_link_container');
+                    const actionContainer = document.getElementById('quick_action_container');
+
+                    // Reset containers
+                    meetingContainer.classList.add('d-none');
+                    actionContainer.classList.add('d-none');
+
+                    if (props.status_code === 'CONFIRMED') {
+                        badge.className = 'badge bg-success fs-7';
+                        meetingContainer.classList.remove('d-none');
+                        document.getElementById('detail_meeting_link').href = props.meeting_link;
+                    } else if (props.status_code === 'ACCEPTED') {
+                        badge.className = 'badge bg-warning text-dark fs-7';
+                    } else if (props.status_code === 'REQUESTED') {
+                        badge.className = 'badge bg-primary fs-7';
+                        actionContainer.classList.remove('d-none');
+
+                        // Set URL routes for accept and reject actions
+                        document.getElementById('action_accept_btn').href = `/bookings/expert/action/${props.booking_id}/accept/`;
+                        document.getElementById('action_reject_btn').href = `/bookings/expert/action/${props.booking_id}/reject/`;
+                    } else {
+                        badge.className = 'badge bg-secondary fs-7';
+                    }
+
+                    bookingModal.show();
+                    return;
+                }
+
+                // IF CLICKED AN EXPIRED/PAST SLOT
+                if (props.is_past) {
+                    alert("This is a past slot record and cannot be edited or deleted.");
+                    return;
+                }
+
+                // IF CLICKED AN UPCOMING AVAILABLE SLOT -> PROMPT TO DELETE
+                const slotId = props.slot_id;
+                if (slotId && confirm(`Remove available slot for ${info.event.title}?`)) {
+                    fetch(`/bookings/schedule/delete/${slotId}/`, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': '{{ csrf_token }}',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    }).then(res => res.json()).then(data => {
+                        if (data.success) {
+                            info.event.remove();
+                        } else {
+                            alert(data.message);
+                        }
+                    });
+                }
+            }
+        });
+
+        calendar.render();
+    });
+</script>
+
+<style>
+    .legend-box {
+        width: 12px;
+        height: 12px;
+        border-radius: 3px;
+        display: inline-block;
+    }
+
+    .fc-event {
+        cursor: pointer;
+        border-radius: 6px;
+        padding: 3px 6px;
+        font-size: 0.82rem;
+        font-weight: 500;
+    }
+
+    .fc-day-past {
+        background-color: #f8f9fa !important;
+        opacity: 0.7;
+    }
+</style>
 {% endblock %}

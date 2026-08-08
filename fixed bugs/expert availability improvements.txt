@@ -1,3 +1,174 @@
+apps/bookings/models.py 
+----------------------------------------------------               
+
+from django.db import models
+from django.conf import settings
+from django.utils import timezone
+from datetime import timedelta
+from apps.accounts.models import CustomUser, ExpertProfile
+import uuid
+
+
+from django.core.validators import MinValueValidator, MaxValueValidator
+from django.contrib.auth import get_user_model
+
+
+
+class ExpertAvailability(models.Model):
+    expert = models.ForeignKey(
+        ExpertProfile, 
+        on_delete=models.CASCADE, 
+        related_name='availabilities'
+    )
+    date = models.DateField(db_index=True)
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+    is_booked = models.BooleanField(default=False, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['date', 'start_time']
+        verbose_name_plural = "Expert Availabilities"
+        unique_together = ('expert', 'date', 'start_time')
+
+    def __str__(self):
+        status = "Booked" if self.is_booked else "Available"
+        return f"{self.expert.user.get_full_name()} | {self.date} [{self.start_time.strftime('%H:%M')} - {self.end_time.strftime('%H:%M')}] ({status})"
+
+
+class SessionStatus(models.TextChoices):
+    REQUESTED = 'REQUESTED', 'Requested'
+    ACCEPTED = 'ACCEPTED', 'Accepted (Payment Pending)'
+    POSTPONED = 'POSTPONED', 'Postponed by Expert'
+    CONFIRMED = 'CONFIRMED', 'Confirmed (Paid)'
+    REJECTED = 'REJECTED', 'Rejected'
+    EXPIRED = 'EXPIRED', 'Expired (Unpaid)'
+
+
+class SessionBooking(models.Model):
+    user = models.ForeignKey(
+        CustomUser, 
+        on_delete=models.CASCADE, 
+        related_name='bookings'
+    )
+    expert = models.ForeignKey(
+        ExpertProfile, 
+        on_delete=models.CASCADE, 
+        related_name='sessions'
+    )
+    slot = models.ForeignKey(
+        ExpertAvailability, 
+        on_delete=models.CASCADE, 
+        related_name='booking_requests'
+    )
+    status = models.CharField(
+        max_length=20, 
+        choices=SessionStatus.choices, 
+        default=SessionStatus.REQUESTED,
+        db_index=True
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    payment_deadline = models.DateTimeField(null=True, blank=True)
+
+    # Postpone Feature Fields
+    proposed_date = models.DateField(null=True, blank=True)
+    proposed_start_time = models.TimeField(null=True, blank=True)
+    proposed_end_time = models.TimeField(null=True, blank=True)
+    meeting_link = models.URLField(max_length=500, blank=True, null=True)
+    class Meta:
+        ordering = ['-created_at']
+
+    def set_payment_deadline(self):
+        """ Calculates a 24-hour window from acceptance """
+        self.payment_deadline = timezone.now() + timedelta(hours=24)
+
+    def is_payment_expired(self):
+        if self.status == SessionStatus.ACCEPTED and self.payment_deadline:
+            return timezone.now() > self.payment_deadline
+        return False
+
+
+
+
+
+
+    def generate_meeting_link(self):
+        """Generate a unique, hard-to-guess Jitsi Meet room link."""
+
+        unique_room_id = (
+            f"Adwise-Consultation-{self.id}-"
+            f"{uuid.uuid4().hex[:10]}"
+        )
+
+        self.meeting_link = (
+            f"https://meet.jit.si/{unique_room_id}"
+        )
+
+        self.save(update_fields=['meeting_link'])
+
+        return self.meeting_link
+
+
+
+
+    def __str__(self):
+        return f"Booking #{self.id}: {self.user.username} -> {self.expert.user.username} ({self.get_status_display()})"
+
+    
+   
+
+class Notification(models.Model):
+    user = models.ForeignKey(
+        CustomUser, 
+        on_delete=models.CASCADE, 
+        related_name='notifications'
+    )
+    title = models.CharField(max_length=150)
+    message = models.TextField()
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Notification for {self.user.username}: {self.title}"
+
+
+
+
+
+User = get_user_model()
+
+
+class Review(models.Model):
+    booking = models.OneToOneField(
+        'SessionBooking', 
+        on_delete=models.CASCADE, 
+        related_name='review'
+    )
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reviews')
+    expert = models.ForeignKey(ExpertProfile, on_delete=models.CASCADE, related_name='reviews')
+    
+    rating = models.PositiveSmallIntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+        help_text="Rating from 1 to 5 stars"
+    )
+    comment = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Review ({self.rating}★) by {self.user.first_name} for {self.expert.user.first_name}"      
+
+
+----------------------------------------------       
+
+apps/bookings/views.py
+
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -12,7 +183,7 @@ from .utils import send_session_email_notification
 from .models import Review
 from .forms import ReviewForm
 from django.http import JsonResponse
-from datetime import datetime, timedelta, time
+
 
 
 
@@ -28,356 +199,73 @@ def create_notification(user, title, message):
 
 
 # ==========================================
-# 2. EXPERT SCHEDULE MANAGEMENT & CALENDAR
+# 2. EXPERT SCHEDULE MANAGEMENT
 # ==========================================
-
-
 @login_required
 def schedule_manager_view(request):
-    """ Allows experts to set availability via explicit Start Time & End Time with flexible minute-chunking """
+    """ Allows experts to view, add, and manage their consultation availability slots """
     if request.user.role != UserRole.EXPERT:
         messages.error(request, "Access restricted to Expert accounts.")
         return redirect('accounts:user_dashboard')
 
+    # 1. Fetch expert profile
     expert_profile = get_object_or_404(ExpertProfile, user=request.user)
 
+    # 2. Handle slot creation form submission
     if request.method == 'POST':
-        slot_type = request.POST.get('slot_type', 'one_time')
-        specific_date_str = request.POST.get('date')
-        day_of_week = request.POST.get('day_of_week')
-        start_time_str = request.POST.get('start_time')
-        end_time_str = request.POST.get('end_time')
-        chunk_minutes = request.POST.get('chunk_minutes', 'none')
+        date = request.POST.get('date')
+        start_time = request.POST.get('start_time')
+        end_time = request.POST.get('end_time')
 
-        now = timezone.now()
-        today = now.date()
+        if date and start_time and end_time:
+            # Check for existing duplicate slot
+            existing_slot = ExpertAvailability.objects.filter(
+                expert=expert_profile,
+                date=date,
+                start_time=start_time,
+                end_time=end_time
+            ).exists()
 
-        if start_time_str and end_time_str:
-            try:
-                start_time = datetime.strptime(start_time_str, '%H:%M').time()
-                end_time = datetime.strptime(end_time_str, '%H:%M').time()
-
-                if start_time >= end_time:
-                    messages.error(request, "End time must be strictly after start time.")
-                    return redirect('bookings:schedule_manager')
-
-                # Past date/time checks
-                if slot_type == 'one_time' and specific_date_str:
-                    target_date = datetime.strptime(specific_date_str, '%Y-%m-%d').date()
-                    if target_date < today:
-                        messages.error(request, "You cannot add availability slots for past dates.")
-                        return redirect('bookings:schedule_manager')
-                    
-                    if target_date == today and start_time <= now.time():
-                        messages.error(request, "You cannot add availability slots for a past time today.")
-                        return redirect('bookings:schedule_manager')
-                else:
-                    target_date = None
-
-                dummy_date = target_date if target_date else today
-                current_start_dt = datetime.combine(dummy_date, start_time)
-                total_end_dt = datetime.combine(dummy_date, end_time)
-
-                is_rec = (slot_type == 'recurring')
-                target_dow = int(day_of_week) if is_rec and day_of_week is not None else None
-
-                created_count = 0
-
-                # Option A: Create a single slot with the exact start and end time
-                if chunk_minutes == 'none':
-                    existing_slot = ExpertAvailability.objects.filter(
-                        expert=expert_profile,
-                        is_recurring=is_rec,
-                        day_of_week=target_dow,
-                        date=target_date,
-                        start_time=current_start_dt.time(),
-                        end_time=total_end_dt.time()
-                    ).exists()
-
-                    if not existing_slot:
-                        ExpertAvailability.objects.create(
-                            expert=expert_profile,
-                            is_recurring=is_rec,
-                            day_of_week=target_dow,
-                            date=target_date,
-                            start_time=current_start_dt.time(),
-                            end_time=total_end_dt.time(),
-                            is_booked=False
-                        )
-                        created_count += 1
-
-                # Option B: Divide the time range into custom minute chunks (30, 45, 60 mins)
-                else:
-                    step = int(chunk_minutes)
-                    while current_start_dt + timedelta(minutes=step) <= total_end_dt:
-                        next_end_dt = current_start_dt + timedelta(minutes=step)
-
-                        existing_slot = ExpertAvailability.objects.filter(
-                            expert=expert_profile,
-                            is_recurring=is_rec,
-                            day_of_week=target_dow,
-                            date=target_date,
-                            start_time=current_start_dt.time(),
-                            end_time=next_end_dt.time()
-                        ).exists()
-
-                        if not existing_slot:
-                            ExpertAvailability.objects.create(
-                                expert=expert_profile,
-                                is_recurring=is_rec,
-                                day_of_week=target_dow,
-                                date=target_date,
-                                start_time=current_start_dt.time(),
-                                end_time=next_end_dt.time(),
-                                is_booked=False
-                            )
-                            created_count += 1
-
-                        current_start_dt = next_end_dt
-
-                if created_count > 0:
-                    messages.success(request, f"{created_count} availability slot(s) created successfully!")
-                else:
-                    messages.warning(request, "Selected time slot(s) already exist.")
-
+            if existing_slot:
+                messages.warning(request, "You have already created a slot for this exact date and time range.")
+            else:
+                ExpertAvailability.objects.create(
+                    expert=expert_profile,
+                    date=date,
+                    start_time=start_time,
+                    end_time=end_time,
+                    is_booked=False
+                )
+                messages.success(request, "New availability slot added successfully!")
                 return redirect('bookings:schedule_manager')
-            except ValueError:
-                messages.error(request, "Invalid time or date format.")
         else:
-            messages.error(request, "Please specify valid start and end times.")
+            messages.error(request, "Please fill in all date and time fields.")
 
+    # 3. Retrieve all slots for this expert, ordered by date and start time
+    slots = ExpertAvailability.objects.filter(expert=expert_profile).order_by('date', 'start_time')
+
+    # 4. Pass expert_profile and slots to context
     context = {
         'expert_profile': expert_profile,
+        'slots': slots,
     }
     return render(request, 'bookings/schedule_manager.html', context)
-    """ Allows experts to view, add (with past-date checks & 60-min auto-chunking), and manage availability """
-    if request.user.role != UserRole.EXPERT:
-        messages.error(request, "Access restricted to Expert accounts.")
-        return redirect('accounts:user_dashboard')
-
-    expert_profile = get_object_or_404(ExpertProfile, user=request.user)
-
-    if request.method == 'POST':
-        slot_type = request.POST.get('slot_type', 'one_time')
-        specific_date_str = request.POST.get('date')
-        day_of_week = request.POST.get('day_of_week')
-        start_time_str = request.POST.get('start_time')
-        duration_minutes = int(request.POST.get('duration', 60))
-
-        now = timezone.now()
-        today = now.date()
-
-        if start_time_str:
-            try:
-                start_time = datetime.strptime(start_time_str, '%H:%M').time()
-                
-                # Check for past date submission
-                if slot_type == 'one_time' and specific_date_str:
-                    target_date = datetime.strptime(specific_date_str, '%Y-%m-%d').date()
-                    if target_date < today:
-                        messages.error(request, "You cannot add availability slots for past dates.")
-                        return redirect('bookings:schedule_manager')
-                    
-                    # If date is today, check if start time has already passed
-                    if target_date == today and start_time <= now.time():
-                        messages.error(request, "You cannot add availability slots for a past time today.")
-                        return redirect('bookings:schedule_manager')
-                else:
-                    target_date = None
-
-                dummy_date = target_date if target_date else today
-                current_start_dt = datetime.combine(dummy_date, start_time)
-                total_end_dt = current_start_dt + timedelta(minutes=duration_minutes)
-
-                created_count = 0
-                while current_start_dt < total_end_dt:
-                    next_end_dt = current_start_dt + timedelta(minutes=60)
-                    
-                    is_rec = (slot_type == 'recurring')
-                    target_dow = int(day_of_week) if is_rec and day_of_week is not None else None
-
-                    # Prevent duplicate or overlapping slot creation
-                    existing_slot = ExpertAvailability.objects.filter(
-                        expert=expert_profile,
-                        is_recurring=is_rec,
-                        day_of_week=target_dow,
-                        date=target_date,
-                        start_time=current_start_dt.time(),
-                        end_time=next_end_dt.time()
-                    ).exists()
-
-                    if not existing_slot:
-                        ExpertAvailability.objects.create(
-                            expert=expert_profile,
-                            is_recurring=is_rec,
-                            day_of_week=target_dow,
-                            date=target_date,
-                            start_time=current_start_dt.time(),
-                            end_time=next_end_dt.time(),
-                            is_booked=False
-                        )
-                        created_count += 1
-                    
-                    current_start_dt = next_end_dt
-
-                if created_count > 0:
-                    messages.success(request, f"{created_count} availability slot(s) added successfully!")
-                else:
-                    messages.warning(request, "Selected time slot(s) already exist or overlap.")
-
-                return redirect('bookings:schedule_manager')
-            except ValueError:
-                messages.error(request, "Invalid time or date format.")
-        else:
-            messages.error(request, "Please specify a valid start time.")
-
-    context = {
-        'expert_profile': expert_profile,
-    }
-    return render(request, 'bookings/schedule_manager.html', context)
-
-
 
 @login_required
 def delete_slot_view(request, slot_id):
-    """ AJAX endpoint / standard view to remove availability slot """
     if request.user.role != UserRole.EXPERT:
-        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-            return JsonResponse({'success': False, 'message': 'Access denied.'}, status=403)
         messages.error(request, "Access denied.")
         return redirect('accounts:user_dashboard')
 
     slot = get_object_or_404(ExpertAvailability, id=slot_id, expert__user=request.user)
 
     if slot.is_booked:
-        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-            return JsonResponse({'success': False, 'message': 'Cannot delete a slot that has already been booked.'}, status=400)
         messages.error(request, "Cannot delete a slot that has already been booked.")
     else:
         slot.delete()
-        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-            return JsonResponse({'success': True, 'message': 'Availability slot removed successfully.'})
         messages.success(request, "Availability slot removed successfully.")
 
     return redirect('bookings:schedule_manager')
-
-@login_required
-def get_expert_calendar_events_api(request):
-    """ Provides JSON event feed with distinct color-coding for Requested, Accepted, and Paid states """
-    if request.user.role != UserRole.EXPERT:
-        return JsonResponse([], safe=False)
-
-    expert_profile = get_object_or_404(ExpertProfile, user=request.user)
-    events = []
-    
-    now = timezone.now()
-    today = now.date()
-    current_time = now.time()
-
-    # 1. Fetch active booking slot IDs
-    booked_slot_ids = SessionBooking.objects.filter(
-        expert=expert_profile,
-        status__in=[SessionStatus.CONFIRMED, SessionStatus.ACCEPTED, SessionStatus.REQUESTED]
-    ).values_list('slot_id', flat=True)
-
-    # 2. Fetch Availability Slots (excluding slots with active requests/bookings)
-    slots = ExpertAvailability.objects.filter(expert=expert_profile).exclude(id__in=booked_slot_ids)
-    
-    for slot in slots:
-        if slot.is_recurring and slot.day_of_week is not None:
-            fc_day = (slot.day_of_week + 1) % 7
-            events.append({
-                'id': str(slot.id),
-                'title': f"Available (Every {slot.get_day_of_week_display()})",
-                'startTime': slot.start_time.strftime('%H:%M:%S'),
-                'endTime': slot.end_time.strftime('%H:%M:%S'),
-                'daysOfWeek': [fc_day],
-                'backgroundColor': '#0d6efd',
-                'borderColor': '#0d6efd',
-                'extendedProps': {'is_booked': False, 'slot_id': slot.id, 'is_past': False}
-            })
-        elif slot.date:
-            is_past_slot = (slot.date < today) or (slot.date == today and slot.end_time <= current_time)
-            title_text = "Expired Slot" if is_past_slot else "Available Slot"
-            bg_color = "#6c757d" if is_past_slot else "#0d6efd"
-
-            events.append({
-                'id': str(slot.id),
-                'title': title_text,
-                'start': f"{slot.date.isoformat()}T{slot.start_time.strftime('%H:%M:%S')}",
-                'end': f"{slot.date.isoformat()}T{slot.end_time.strftime('%H:%M:%S')}",
-                'backgroundColor': bg_color,
-                'borderColor': bg_color,
-                'extendedProps': {
-                    'is_booked': False, 
-                    'slot_id': slot.id, 
-                    'is_past': is_past_slot
-                }
-            })
-
-    # 3. Fetch Booked / Requested Client Sessions
-    bookings = SessionBooking.objects.filter(
-        expert=expert_profile, 
-        status__in=[SessionStatus.CONFIRMED, SessionStatus.ACCEPTED, SessionStatus.REQUESTED]
-    ).select_related('user', 'slot')
-
-    for b in bookings:
-        session_date = b.slot.date if (b.slot and b.slot.date) else b.proposed_date
-        start_time = b.slot.start_time if b.slot else b.proposed_start_time
-        end_time = b.slot.end_time if b.slot else b.proposed_end_time
-
-        if not session_date or not start_time or not end_time:
-            continue
-
-        is_past_booking = (session_date < today) or (session_date == today and end_time <= current_time)
-        client_name = b.user.get_full_name().strip() or b.user.username
-
-        # Status & Color Mapping
-        if is_past_booking:
-            title_text = f"Completed: {client_name}"
-            bg_color = "#495057" # Dark Charcoal
-            text_color = "#ffffff"
-        elif b.status == SessionStatus.CONFIRMED:
-            title_text = f"Paid: {client_name}"
-            bg_color = "#198754" # Green
-            text_color = "#ffffff"
-        elif b.status == SessionStatus.ACCEPTED:
-            title_text = f"Payment Pending: {client_name}"
-            bg_color = "#ffc107" # Yellow
-            text_color = "#000000"
-        else: # SessionStatus.REQUESTED
-            title_text = f"New Request: {client_name}"
-            bg_color = "#fd7e14" # Orange
-            text_color = "#ffffff"
-
-        events.append({
-            'id': f"booking_{b.id}",
-            'title': title_text,
-            'start': f"{session_date.isoformat()}T{start_time.strftime('%H:%M:%S')}",
-            'end': f"{session_date.isoformat()}T{end_time.strftime('%H:%M:%S')}",
-            'backgroundColor': bg_color,
-            'borderColor': bg_color,
-            'textColor': text_color,
-            'extendedProps': {
-                'is_booked': True,
-                'booking_id': b.id,
-                'status_code': b.status,
-                'is_past': is_past_booking,
-                'client_name': client_name,
-                'client_email': b.user.email,
-                'payment_status': b.get_status_display(),
-                'meeting_link': b.meeting_link or '',
-                'session_date': session_date.strftime('%b %d, %Y'),
-                'session_time': f"{start_time.strftime('%I:%M %p')} - {end_time.strftime('%I:%M %p')}"
-            }
-        })
-
-    return JsonResponse(events, safe=False)
-
-
-
-
-
 
 
 # ==========================================
@@ -837,3 +725,146 @@ def get_subcategories_api(request):
     category_id = request.GET.get('category_id')
     # logic to fetch subcategories...
     return JsonResponse({'subcategories': list(subcategories)})
+
+
+
+-----------------------------------------------------
+apps/bookings/urls.py
+
+from django.urls import path
+from . import views
+
+
+app_name = 'bookings'
+
+urlpatterns = [
+    # Schedule Management
+    path('schedule/', views.schedule_manager_view, name='schedule_manager'),
+    path('schedule/delete/<int:slot_id>/', views.delete_slot_view, name='delete_slot'),
+    
+    # Search Engine & Detail
+    path('search/', views.search_experts_view, name='search_experts'),
+    path('expert/<int:expert_id>/', views.expert_detail_view, name='expert_detail'),
+
+    # Phase 4: Booking Flow
+    path('request/<int:slot_id>/', views.request_session_view, name='request_session'),
+    path('expert/requests/', views.expert_requests_view, name='expert_requests'),
+    path('expert/action/<int:booking_id>/<str:action>/', views.expert_action_view, name='expert_action'),
+    
+    # User Bookings & Payment
+    path('my-bookings/', views.user_bookings_view, name='user_bookings'),
+    path('payment/<int:booking_id>/', views.process_payment_view, name='process_payment'),
+    path('postpone-respond/<int:booking_id>/<str:response_action>/', views.respond_postpone_view, name='respond_postpone'),
+    
+    # Notifications
+    path('notifications/', views.notifications_view, name='notifications'),
+
+    path('review/submit/<int:booking_id>/', views.submit_review_view, name='submit_review'),
+    path('api/subcategories/', views.get_subcategories_api, name='get_subcategories_api'),
+
+]
+
+-------------------------------------------
+templates/bookings/schedule_manager.html
+
+
+{% extends 'base.html' %}
+
+{% block title %}Schedule Availability - Adwise{% endblock %}
+
+{% block content %}
+<!-- Header Section -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h3 class="fw-bold m-0"><i class="fa-solid fa-clock text-primary me-2"></i>My Consultation Schedule</h3>
+        <p class="text-muted m-0 mt-1">
+            Current Fee: 
+            <span class="badge bg-success fs-6">
+                ₹{{ expert_profile.hourly_rate }}/hr
+            </span>
+        </p>
+    </div>
+    <a href="{% url 'accounts:edit_expert_profile' %}" class="btn btn-outline-primary btn-sm fw-bold">
+        <i class="fa-solid fa-pen-to-square me-1"></i> Update Fee & Bio
+    </a>
+</div>
+
+<div class="row g-4">
+    <!-- Left Column: Add Available Slot Form -->
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0 p-4">
+            <h5 class="fw-bold mb-3"><i class="fa-solid fa-plus-circle text-primary me-1"></i>Add Available Slot</h5>
+            
+            <form method="POST" action="{% url 'bookings:schedule_manager' %}">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Date</label>
+                    <input type="date" name="date" class="form-control" required>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Start Time</label>
+                    <input type="time" name="start_time" class="form-control" required>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">End Time</label>
+                    <input type="time" name="end_time" class="form-control" required>
+                </div>
+                
+                <button type="submit" class="btn btn-primary w-100 fw-bold">
+                    <i class="fa-solid fa-plus me-1"></i> Add Schedule Slot
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Right Column: Upcoming Schedules Table -->
+    <div class="col-md-8">
+        <div class="card shadow-sm border-0 p-4">
+            <h5 class="fw-bold mb-3"><i class="fa-solid fa-calendar-days text-primary me-1"></i>Upcoming Schedules</h5>
+            
+            {% if slots %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Date</th>
+                                <th>Time Range</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for slot in slots %}
+                            <tr>
+                                <td><strong>{{ slot.date|date:"D, d M Y" }}</strong></td>
+                                <td>{{ slot.start_time|time:"h:i A" }} - {{ slot.end_time|time:"h:i A" }}</td>
+                                <td>
+                                    {% if slot.is_booked %}
+                                        <span class="badge bg-danger">Booked</span>
+                                    {% else %}
+                                        <span class="badge bg-success">Available</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if slot.is_booked %}
+                                        <span class="text-muted small">Locked</span>
+                                    {% else %}
+                                        <a href="{% url 'bookings:delete_slot' slot.id %}" class="btn btn-outline-danger btn-sm" onclick="return confirm('Are you sure you want to delete this available slot?');">
+                                            <i class="fa-solid fa-trash"></i> Delete
+                                        </a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-muted m-0">You haven't added any schedule slots yet. Use the form on the left to add your availability.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
