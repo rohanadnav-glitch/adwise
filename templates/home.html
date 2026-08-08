@@ -12,11 +12,9 @@
             <!-- Left Content Column -->
             <div class="col-lg-6 pe-lg-5">
                 <!-- Top Pill Badge -->
-                <div
-                    class="d-inline-flex align-items-center gap-2 bg-white border border-primary-subtle rounded-pill px-3 py-1 mb-3 shadow-xs">
+                <div class="d-inline-flex align-items-center gap-2 bg-white border border-primary-subtle rounded-pill px-3 py-1 mb-3 shadow-xs">
                     <span class="badge-pulse-dot"></span>
-                    <span class="small fw-semibold text-primary tracking-wide text-uppercase"
-                        style="font-size: 0.75rem;">Welcome to Adwise</span>
+                    <span class="small fw-semibold text-primary tracking-wide text-uppercase" style="font-size: 0.75rem;">Welcome to Adwise</span>
                 </div>
 
                 <!-- Hero Heading with Gradient Accent -->
@@ -32,8 +30,7 @@
 
                 <!-- Action Cards/Buttons -->
                 <div class="d-flex flex-sm-row flex-column gap-3 mb-5">
-                    <a href="{% url 'accounts:register_user' %}"
-                        class="btn-action-card primary-card shadow-sm text-decoration-none">
+                    <a href="{% url 'accounts:register_user' %}" class="btn-action-card primary-card shadow-sm text-decoration-none">
                         <div>
                             <div class="fw-bold fs-6">I'm a User</div>
                             <div class="small opacity-85 fw-normal">Ask Questions</div>
@@ -41,8 +38,7 @@
                         <i class="fa-solid fa-arrow-right action-arrow"></i>
                     </a>
 
-                    <a href="{% url 'accounts:expert_register_step1' %}"
-                        class="btn-action-card secondary-card shadow-sm text-decoration-none">
+                    <a href="{% url 'accounts:expert_register_step1' %}" class="btn-action-card secondary-card shadow-sm text-decoration-none">
                         <div>
                             <div class="fw-bold fs-6 text-dark">I'm an Expert</div>
                             <div class="small text-muted fw-normal">Share Knowledge</div>
@@ -82,10 +78,7 @@
                 <div class="hero-graphic-wrapper position-relative d-inline-block w-100 p-2">
 
                     <!-- Background Banner Image -->
-                    {% load static %}
-
                     <img src="{% static 'images/adwise-connect.png' %}" alt="Adwise Connect" class="img-fluid w-100">
-                    class="img-fluid w-100 rounded-3">
 
                     <!-- Floating Pill 1: Career Advice -->
                     <div
@@ -156,198 +149,161 @@
 </section>
 
 <style>
-    /* 1. Page Background & Typography */
-    .hero-section {
-        background: radial-gradient(100% 50% at 50% 0%, rgba(13, 110, 253, 0.05) 0%, rgba(255, 255, 255, 1) 100%);
-    }
+/* 1. Page Background & Typography */
+.hero-section {
+    background: radial-gradient(100% 50% at 50% 0%, rgba(13, 110, 253, 0.05) 0%, rgba(255, 255, 255, 1) 100%);
+}
 
-    .tracking-tight {
-        letter-spacing: -0.03em;
-    }
+.tracking-tight {
+    letter-spacing: -0.03em;
+}
 
-    .fw-black {
-        font-weight: 800;
-    }
+.fw-black {
+    font-weight: 800;
+}
 
-    .gradient-text {
-        background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 50%, #6610f2 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-    }
+.gradient-text {
+    background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 50%, #6610f2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
 
-    /* 2. Badge Pulse Dot */
-    .badge-pulse-dot {
-        width: 7px;
-        height: 7px;
-        background-color: #0d6efd;
-        border-radius: 50%;
-        box-shadow: 0 0 0 0 rgba(13, 110, 253, 0.5);
-        animation: pulse 2s infinite;
-    }
+/* 2. Badge Pulse Dot */
+.badge-pulse-dot {
+    width: 7px;
+    height: 7px;
+    background-color: #0d6efd;
+    border-radius: 50%;
+    box-shadow: 0 0 0 0 rgba(13, 110, 253, 0.5);
+    animation: pulse 2s infinite;
+}
 
-    @keyframes pulse {
-        0% {
-            transform: scale(0.95);
-            box-shadow: 0 0 0 0 rgba(13, 110, 253, 0.6);
-        }
+@keyframes pulse {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(13, 110, 253, 0.6); }
+    70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(13, 110, 253, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(13, 110, 253, 0); }
+}
 
-        70% {
-            transform: scale(1);
-            box-shadow: 0 0 0 6px rgba(13, 110, 253, 0);
-        }
+/* 3. Action Cards/Buttons */
+.btn-action-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.85rem 1.25rem;
+    border-radius: 12px;
+    min-width: 185px;
+    transition: all 0.25s ease-in-out;
+}
 
-        100% {
-            transform: scale(0.95);
-            box-shadow: 0 0 0 0 rgba(13, 110, 253, 0);
-        }
-    }
+.primary-card {
+    background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
+    color: #ffffff;
+    border: 1px solid transparent;
+}
 
-    /* 3. Action Cards/Buttons */
-    .btn-action-card {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 0.85rem 1.25rem;
-        border-radius: 12px;
-        min-width: 185px;
-        transition: all 0.25s ease-in-out;
-    }
+.primary-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 25px -5px rgba(13, 110, 253, 0.35) !important;
+    color: #ffffff;
+}
 
-    .primary-card {
-        background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
-        color: #ffffff;
-        border: 1px solid transparent;
-    }
+.secondary-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+}
 
-    .primary-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 12px 25px -5px rgba(13, 110, 253, 0.35) !important;
-        color: #ffffff;
-    }
+.secondary-card:hover {
+    transform: translateY(-3px);
+    border-color: #cbd5e1;
+    box-shadow: 0 12px 20px -5px rgba(0, 0, 0, 0.08) !important;
+}
 
-    .secondary-card {
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
-    }
+.action-arrow {
+    font-size: 0.85rem;
+    transition: transform 0.25s ease;
+}
 
-    .secondary-card:hover {
-        transform: translateY(-3px);
-        border-color: #cbd5e1;
-        box-shadow: 0 12px 20px -5px rgba(0, 0, 0, 0.08) !important;
-    }
+.btn-action-card:hover .action-arrow {
+    transform: translateX(4px);
+}
 
-    .action-arrow {
-        font-size: 0.85rem;
-        transition: transform 0.25s ease;
-    }
+/* 4. Hero Graphic Ambient Glow & Drop Shadow */
+.hero-graphic-wrapper {
+    max-width: 520px;
+    margin: 0 auto;
+}
 
-    .btn-action-card:hover .action-arrow {
-        transform: translateX(4px);
-    }
+.hero-graphic-wrapper::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 85%;
+    height: 85%;
+    background: radial-gradient(circle, rgba(13, 110, 253, 0.18) 0%, rgba(255, 255, 255, 0) 70%);
+    border-radius: 50%;
+    z-index: 1;
+    filter: blur(25px);
+}
 
-    /* 4. Hero Graphic Ambient Glow & Drop Shadow */
-    .hero-graphic-wrapper {
-        max-width: 520px;
-        margin: 0 auto;
-    }
+.hero-graphic-wrapper img {
+    position: relative;
+    z-index: 2;
+    filter: drop-shadow(0px 15px 30px rgba(13, 110, 253, 0.15));
+}
 
-    .hero-graphic-wrapper::before {
-        content: "";
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        width: 85%;
-        height: 85%;
-        background: radial-gradient(circle, rgba(13, 110, 253, 0.18) 0%, rgba(255, 255, 255, 0) 70%);
-        border-radius: 50%;
-        z-index: 1;
-        filter: blur(25px);
-    }
+/* 5. Floating Pills Depth & Glassmorphism */
+.floating-pill {
+    position: absolute;
+    z-index: 5;
+    background: rgba(255, 255, 255, 0.92) !important;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(226, 232, 240, 0.8) !important;
+    box-shadow: 0 12px 24px -6px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.03) !important;
+    animation: float 4s ease-in-out infinite;
+    white-space: nowrap;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
 
-    .hero-graphic-wrapper img {
-        position: relative;
-        z-index: 2;
-        filter: drop-shadow(0px 15px 30px rgba(13, 110, 253, 0.15));
-    }
+.floating-pill:hover {
+    transform: translateY(-4px) scale(1.03);
+    box-shadow: 0 20px 30px -10px rgba(13, 110, 253, 0.2) !important;
+    border-color: rgba(13, 110, 253, 0.3) !important;
+}
 
-    /* 5. Floating Pills Depth & Glassmorphism */
-    .floating-pill {
-        position: absolute;
-        z-index: 5;
-        background: rgba(255, 255, 255, 0.92) !important;
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(226, 232, 240, 0.8) !important;
-        box-shadow: 0 12px 24px -6px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.03) !important;
-        animation: float 4s ease-in-out infinite;
-        white-space: nowrap;
-        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    }
+/* Precise Floating Positions */
+.pill-top-left { top: 2%; left: -2%; animation-delay: 0s; }
+.pill-top-right { top: 8%; right: -2%; animation-delay: 1s; }
+.pill-mid-left { top: 42%; left: -6%; animation-delay: 2s; }
+.pill-bottom-right { bottom: 2%; right: 2%; animation-delay: 1.5s; }
 
-    .floating-pill:hover {
-        transform: translateY(-4px) scale(1.03);
-        box-shadow: 0 20px 30px -10px rgba(13, 110, 253, 0.2) !important;
-        border-color: rgba(13, 110, 253, 0.3) !important;
-    }
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-7px); }
+}
 
-    /* Precise Floating Positions */
-    .pill-top-left {
-        top: 2%;
-        left: -2%;
-        animation-delay: 0s;
-    }
+/* 6. Feature Cards & How It Works Cards */
+.feature-card {
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    transition: all 0.2s ease;
+}
 
-    .pill-top-right {
-        top: 8%;
-        right: -2%;
-        animation-delay: 1s;
-    }
+.feature-card:hover {
+    background: #ffffff;
+    border-color: rgba(13, 110, 253, 0.3);
+    box-shadow: 0 6px 15px -3px rgba(0, 0, 0, 0.05);
+}
 
-    .pill-mid-left {
-        top: 42%;
-        left: -6%;
-        animation-delay: 2s;
-    }
+.step-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border: 1px solid rgba(226, 232, 240, 0.6);
+}
 
-    .pill-bottom-right {
-        bottom: 2%;
-        right: 2%;
-        animation-delay: 1.5s;
-    }
-
-    @keyframes float {
-
-        0%,
-        100% {
-            transform: translateY(0px);
-        }
-
-        50% {
-            transform: translateY(-7px);
-        }
-    }
-
-    /* 6. Feature Cards & How It Works Cards */
-    .feature-card {
-        background: rgba(255, 255, 255, 0.6);
-        border: 1px solid rgba(226, 232, 240, 0.8);
-        transition: all 0.2s ease;
-    }
-
-    .feature-card:hover {
-        background: #ffffff;
-        border-color: rgba(13, 110, 253, 0.3);
-        box-shadow: 0 6px 15px -3px rgba(0, 0, 0, 0.05);
-    }
-
-    .step-card {
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-        border: 1px solid rgba(226, 232, 240, 0.6);
-    }
-
-    .step-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05) !important;
-    }
+.step-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05) !important;
+}
 </style>
 {% endblock %}
