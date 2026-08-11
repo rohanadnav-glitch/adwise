@@ -13,7 +13,7 @@ from .models import Review
 from .forms import ReviewForm
 from django.http import JsonResponse
 from datetime import datetime, timedelta, time
-
+from .utils import send_session_email_notification, check_and_release_expired_locks
 
 
 # ==========================================
@@ -150,92 +150,6 @@ def schedule_manager_view(request):
         'expert_profile': expert_profile,
     }
     return render(request, 'bookings/schedule_manager.html', context)
-    """ Allows experts to view, add (with past-date checks & 60-min auto-chunking), and manage availability """
-    if request.user.role != UserRole.EXPERT:
-        messages.error(request, "Access restricted to Expert accounts.")
-        return redirect('accounts:user_dashboard')
-
-    expert_profile = get_object_or_404(ExpertProfile, user=request.user)
-
-    if request.method == 'POST':
-        slot_type = request.POST.get('slot_type', 'one_time')
-        specific_date_str = request.POST.get('date')
-        day_of_week = request.POST.get('day_of_week')
-        start_time_str = request.POST.get('start_time')
-        duration_minutes = int(request.POST.get('duration', 60))
-
-        now = timezone.now()
-        today = now.date()
-
-        if start_time_str:
-            try:
-                start_time = datetime.strptime(start_time_str, '%H:%M').time()
-                
-                # Check for past date submission
-                if slot_type == 'one_time' and specific_date_str:
-                    target_date = datetime.strptime(specific_date_str, '%Y-%m-%d').date()
-                    if target_date < today:
-                        messages.error(request, "You cannot add availability slots for past dates.")
-                        return redirect('bookings:schedule_manager')
-                    
-                    # If date is today, check if start time has already passed
-                    if target_date == today and start_time <= now.time():
-                        messages.error(request, "You cannot add availability slots for a past time today.")
-                        return redirect('bookings:schedule_manager')
-                else:
-                    target_date = None
-
-                dummy_date = target_date if target_date else today
-                current_start_dt = datetime.combine(dummy_date, start_time)
-                total_end_dt = current_start_dt + timedelta(minutes=duration_minutes)
-
-                created_count = 0
-                while current_start_dt < total_end_dt:
-                    next_end_dt = current_start_dt + timedelta(minutes=60)
-                    
-                    is_rec = (slot_type == 'recurring')
-                    target_dow = int(day_of_week) if is_rec and day_of_week is not None else None
-
-                    # Prevent duplicate or overlapping slot creation
-                    existing_slot = ExpertAvailability.objects.filter(
-                        expert=expert_profile,
-                        is_recurring=is_rec,
-                        day_of_week=target_dow,
-                        date=target_date,
-                        start_time=current_start_dt.time(),
-                        end_time=next_end_dt.time()
-                    ).exists()
-
-                    if not existing_slot:
-                        ExpertAvailability.objects.create(
-                            expert=expert_profile,
-                            is_recurring=is_rec,
-                            day_of_week=target_dow,
-                            date=target_date,
-                            start_time=current_start_dt.time(),
-                            end_time=next_end_dt.time(),
-                            is_booked=False
-                        )
-                        created_count += 1
-                    
-                    current_start_dt = next_end_dt
-
-                if created_count > 0:
-                    messages.success(request, f"{created_count} availability slot(s) added successfully!")
-                else:
-                    messages.warning(request, "Selected time slot(s) already exist or overlap.")
-
-                return redirect('bookings:schedule_manager')
-            except ValueError:
-                messages.error(request, "Invalid time or date format.")
-        else:
-            messages.error(request, "Please specify a valid start time.")
-
-    context = {
-        'expert_profile': expert_profile,
-    }
-    return render(request, 'bookings/schedule_manager.html', context)
-
 
 
 @login_required
@@ -260,6 +174,7 @@ def delete_slot_view(request, slot_id):
         messages.success(request, "Availability slot removed successfully.")
 
     return redirect('bookings:schedule_manager')
+
 
 @login_required
 def get_expert_calendar_events_api(request):
@@ -322,7 +237,7 @@ def get_expert_calendar_events_api(request):
     ).select_related('user', 'slot')
 
     for b in bookings:
-        session_date = b.slot.date if (b.slot and b.slot.date) else b.proposed_date
+        session_date = b.proposed_date or (b.slot.date if (b.slot and b.slot.date) else None)
         start_time = b.slot.start_time if b.slot else b.proposed_start_time
         end_time = b.slot.end_time if b.slot else b.proposed_end_time
 
@@ -375,11 +290,6 @@ def get_expert_calendar_events_api(request):
     return JsonResponse(events, safe=False)
 
 
-
-
-
-
-
 # ==========================================
 # 3. DYNAMIC SEARCH & FILTER ENGINE
 # ==========================================
@@ -396,20 +306,24 @@ def search_experts_view(request):
 
     experts = ExpertProfile.objects.select_related(
         'user', 'category', 'subcategory', 'state', 'district', 'city'
-    ).all()
+    ).prefetch_related('subcategories').all()
 
     if query:
         experts = experts.filter(
             Q(user__first_name__icontains=query) |
             Q(user__last_name__icontains=query) |
             Q(qualification__icontains=query) |
-            Q(bio__icontains=query)
-        )
+            Q(bio__icontains=query) |
+            Q(subcategories__name__icontains=query)
+        ).distinct()
 
     if category_id and category_id.isdigit():
         experts = experts.filter(category_id=category_id)
+        
     if subcategory_id and subcategory_id.isdigit():
-        experts = experts.filter(subcategory_id=subcategory_id)
+        experts = experts.filter(
+            Q(subcategory_id=subcategory_id) | Q(subcategories__id=subcategory_id)
+        ).distinct()
 
     if state_id and state_id.isdigit():
         experts = experts.filter(state_id=state_id)
@@ -448,7 +362,6 @@ def search_experts_view(request):
     }
     return render(request, 'bookings/search_results.html', context)
 
-
 @login_required
 def expert_detail_view(request, expert_id):
     expert = get_object_or_404(
@@ -456,11 +369,88 @@ def expert_detail_view(request, expert_id):
         id=expert_id
     )
 
-    available_slots = ExpertAvailability.objects.filter(
+    now = timezone.now()
+    today = now.date()
+
+    # 1. Expire stale locks in batch
+    check_and_release_expired_locks()
+
+    # 2. Fetch raw unbooked slots OR any recurring slots (prevents recurring slots from vanishing)
+    all_raw_slots = list(ExpertAvailability.objects.filter(
+        Q(expert=expert) & (Q(is_booked=False) | Q(is_recurring=True))
+    ).order_by('start_time'))
+
+    # 3. Fetch active sessions with exact dates
+    active_bookings = SessionBooking.objects.filter(
         expert=expert,
-        date__gte=date.today(),
-        is_booked=False
-    ).order_by('date', 'start_time')
+        status__in=[SessionStatus.REQUESTED, SessionStatus.ACCEPTED, SessionStatus.CONFIRMED]
+    ).select_related('slot')
+
+    # Build lookup dictionaries keyed by (slot_id, session_date)
+    confirmed_set = set()
+    my_bookings_map = {}
+    locked_set = set()
+
+    for b in active_bookings:
+        b_date = b.proposed_date or (b.slot.date if b.slot else None)
+        if not b_date:
+            continue
+
+        key = (b.slot_id, b_date)
+        if request.user.is_authenticated and b.user_id == request.user.id:
+            # Save my booking states specifically
+            my_bookings_map[key] = {'status': b.status, 'id': b.id}
+        else:
+            # Handle other users' slots
+            if b.status == SessionStatus.CONFIRMED:
+                confirmed_set.add(key)
+            elif b.status in (SessionStatus.REQUESTED, SessionStatus.ACCEPTED):
+                locked_set.add(key)
+
+    available_slots = []
+
+    # 4. Resolve slots for upcoming 14 calendar days
+    for day_offset in range(14):
+        target_date = today + timedelta(days=day_offset)
+        target_dow = target_date.weekday()
+
+        for slot in all_raw_slots:
+            slot_key = (slot.id, target_date)
+
+            # Skip slots already confirmed and paid for by someone else
+            if slot_key in confirmed_set:
+                continue
+
+            is_valid_slot = False
+            if not slot.is_recurring and slot.date == target_date:
+                is_valid_slot = True
+            elif slot.is_recurring and slot.day_of_week == target_dow:
+                is_valid_slot = True
+
+            if is_valid_slot:
+                my_booking = my_bookings_map.get(slot_key)
+                
+                # Flag to check if the session time has passed today
+                is_past = (target_date == today and slot.end_time <= now.time())
+                
+                # Normally we hide past slots today, but if the current user booked it, keep it visible to show "Expired/Completed"
+                if target_date == today and slot.start_time <= now.time() and not my_booking:
+                    continue
+
+                is_locked = (slot_key in locked_set) and not my_booking
+
+                available_slots.append({
+                    'id': slot.id,
+                    'date': target_date,
+                    'start_time': slot.start_time,
+                    'end_time': slot.end_time,
+                    'my_booking_status': my_booking['status'] if my_booking else None,
+                    'my_booking_id': my_booking['id'] if my_booking else None,
+                    'is_locked': is_locked,
+                    'is_past': is_past,
+                })
+
+    available_slots.sort(key=lambda x: (x['date'], x['start_time']))
 
     return render(request, 'bookings/expert_detail.html', {
         'expert': expert,
@@ -468,47 +458,155 @@ def expert_detail_view(request, expert_id):
     })
 
 
+@login_required
+@transaction.atomic
+def process_payment_view(request, booking_id):
+
+    booking = get_object_or_404(
+        SessionBooking.objects.select_for_update(),
+        id=booking_id,
+        user=request.user,
+        status=SessionStatus.ACCEPTED
+    )
+
+    if booking.payment_deadline and timezone.now() > booking.payment_deadline:
+        booking.status = SessionStatus.EXPIRED
+        booking.save(update_fields=['status'])
+        messages.error(request, "The 24-hour payment window for this session has expired.")
+        return redirect('bookings:user_bookings')
+
+    if request.method == 'POST':
+        import uuid
+        booking.status = SessionStatus.CONFIRMED
+        
+        # Generate the meeting link directly in the view
+        unique_room_id = f"Adwise-Consultation-{booking.id}-{uuid.uuid4().hex[:10]}"
+        booking.meeting_link = f"https://meet.jit.si/{unique_room_id}"
+
+        slot = booking.slot
+        # Only lock out the master slot if it is a ONE-TIME slot
+        if not slot.is_recurring:
+            slot.is_booked = True
+            slot.save(update_fields=['is_booked'])
+
+        SessionBooking.objects.filter(
+            slot=slot,
+            status=SessionStatus.REQUESTED
+        ).exclude(
+            id=booking.id
+        ).update(
+            status=SessionStatus.REJECTED
+        )
+
+        # Save both the new status and the generated meeting link
+        booking.save(update_fields=['status', 'meeting_link'])
+
+        create_notification(
+            user=booking.expert.user,
+            title="Session Confirmed & Meeting Room Ready!",
+            message=f"{request.user.get_full_name()} completed payment. Your video meeting room is ready."
+        )
+
+        effective_date = booking.proposed_date or (slot.date if slot else None)
+        session_date_str = effective_date.strftime('%B %d, %Y') if effective_date else "Scheduled Date"
+
+        send_session_email_notification(
+            recipient_email=booking.user.email,
+            subject="Session Confirmed - Your Video Meeting Link",
+            template_name='emails/booking_status_email.html',
+            context={
+                'user_name': booking.user.first_name,
+                'message_body': f"Your session with {booking.expert.user.get_full_name()} is confirmed! You can join the video call using the link below at your scheduled time.",
+                'expert_name': booking.expert.user.get_full_name(),
+                'session_date': session_date_str,
+                'session_time': f"{slot.start_time.strftime('%I:%M %p')} - {slot.end_time.strftime('%I:%M %p')}",
+                'action_url': booking.meeting_link
+            }
+        )
+
+        messages.success(request, "Payment successful! Your consultation session is now confirmed.")
+        return redirect('bookings:user_bookings')
+
+    return render(request, 'bookings/payment.html', {'booking': booking})
+
 # ==========================================
 # 4. USER: REQUEST SESSION & BOOKINGS
 # ==========================================
 @login_required
 @transaction.atomic
 def request_session_view(request, slot_id):
+    """ Standard Single-Slot or Multi-Slot request handler with Topic & Note support """
     if request.user.role != UserRole.USER:
         messages.error(request, "Only registered users can request expert sessions.")
         return redirect('bookings:search_experts')
 
-    slot = get_object_or_404(
-        ExpertAvailability.objects.select_for_update(), 
-        id=slot_id, 
-        is_booked=False
-    )
+    if request.method == 'POST':
+        slot_ids = request.POST.getlist('selected_slots')
+        title = request.POST.get('request_title', '').strip()
+        description = request.POST.get('request_description', '').strip()
 
-    existing_request = SessionBooking.objects.filter(
-        user=request.user, 
-        slot=slot, 
-        status__in=[SessionStatus.REQUESTED, SessionStatus.ACCEPTED, SessionStatus.CONFIRMED]
-    ).exists()
+        # If accessed via single-slot link or form POST without checkboxes
+        if not slot_ids and slot_id:
+            slot_ids = [slot_id]
 
-    if existing_request:
-        messages.warning(request, "You already have an active request or booking for this slot.")
-        return redirect('bookings:expert_detail', expert_id=slot.expert.id)
+        if not slot_ids:
+            messages.error(request, "Please select at least one consultation slot.")
+            return redirect('bookings:search_experts')
 
-    SessionBooking.objects.create(
-        user=request.user,
-        expert=slot.expert,
-        slot=slot,
-        status=SessionStatus.REQUESTED
-    )
+        created_count = 0
+        expert_user = None
 
-    create_notification(
-        user=slot.expert.user,
-        title="New Session Request Received",
-        message=f"{request.user.get_full_name()} requested a consultation for {slot.date.strftime('%b %d, %Y')} at {slot.start_time.strftime('%I:%M %p')}."
-    )
+        today = timezone.now().date()
 
-    messages.success(request, "Session request sent to the expert!")
-    return redirect('bookings:user_bookings')
+        for sid in slot_ids:
+            slot = get_object_or_404(
+                ExpertAvailability.objects.select_for_update(), 
+                id=sid, 
+                is_booked=False
+            )
+            expert_user = slot.expert.user
+
+            # Resolve exact target date for one-time vs recurring slots
+            if slot.is_recurring and slot.day_of_week is not None:
+                days_ahead = (slot.day_of_week - today.weekday()) % 7
+                target_booking_date = today + timedelta(days=days_ahead)
+            else:
+                target_booking_date = slot.date
+
+            existing_request = SessionBooking.objects.filter(
+                user=request.user, 
+                slot=slot, 
+                proposed_date=target_booking_date,
+                status__in=[SessionStatus.REQUESTED, SessionStatus.ACCEPTED, SessionStatus.CONFIRMED]
+            ).exists()
+
+            if not existing_request:
+                SessionBooking.objects.create(
+                    user=request.user,
+                    expert=slot.expert,
+                    slot=slot,
+                    proposed_date=target_booking_date,
+                    title=title,
+                    description=description,
+                    status=SessionStatus.REQUESTED
+                )
+                created_count += 1
+
+        if created_count > 0 and expert_user:
+            create_notification(
+                user=expert_user,
+                title="New Session Request Received",
+                message=f"{request.user.get_full_name()} sent {created_count} consultation request(s): '{title}'."
+            )
+            messages.success(request, f"{created_count} session request(s) sent to the expert!")
+        else:
+            messages.warning(request, "You already have active requests for the selected slot(s).")
+
+        return redirect('bookings:user_bookings')
+
+    # Default GET fallback redirect
+    slot = get_object_or_404(ExpertAvailability, id=slot_id)
+    return redirect('bookings:expert_detail', expert_id=slot.expert.id)
 
 
 @login_required
@@ -520,10 +618,10 @@ def expert_requests_view(request):
     expert = get_object_or_404(ExpertProfile, user=request.user)
     requests_list = SessionBooking.objects.filter(expert=expert).select_related('user', 'slot')
 
-    # ❌ WRONG TEMPLATE: It is pointing to user_bookings.html
     return render(request, 'bookings/expert_requests.html', {
         'requests_list': requests_list
     })
+
 
 @login_required
 @transaction.atomic
@@ -540,17 +638,19 @@ def expert_action_view(request, booking_id, action):
 
     if action == 'accept':
         booking.status = SessionStatus.ACCEPTED
-        booking.set_payment_deadline()
+        booking.payment_deadline = timezone.now() + timedelta(hours=24)
         booking.save()
 
-        # In-App Notification
         create_notification(
             user=booking.user,
             title="Session Request Accepted!",
             message=f"{booking.expert.user.get_full_name()} accepted your request. Complete payment within 24 hours."
         )
 
-        # Trigger Email Alert to User
+        effective_date = booking.proposed_date or (booking.slot.date if booking.slot else None)
+        session_date_str = effective_date.strftime('%B %d, %Y') if effective_date else "Scheduled Date"
+        session_time_str = f"{booking.slot.start_time.strftime('%I:%M %p')} - {booking.slot.end_time.strftime('%I:%M %p')}" if booking.slot and hasattr(booking.slot, 'start_time') else "Scheduled Time"
+
         send_session_email_notification(
             recipient_email=booking.user.email,
             subject="Action Required: Your Adwise Session Request is Accepted!",
@@ -559,38 +659,77 @@ def expert_action_view(request, booking_id, action):
                 'user_name': booking.user.first_name,
                 'message_body': f"Great news! {booking.expert.user.get_full_name()} has accepted your consultation request. Please log in and complete your payment within 24 hours to secure your slot.",
                 'expert_name': booking.expert.user.get_full_name(),
-                'session_date': booking.slot.date.strftime('%B %d, %Y'),
-                'session_time': f"{booking.slot.start_time.strftime('%I:%M %p')} - {booking.slot.end_time.strftime('%I:%M %p')}",
+                'session_date': session_date_str,
+                'session_time': session_time_str,
                 'action_url': 'http://127.0.0.1:8000/bookings/my-bookings/'
             }
         )
         messages.success(request, "Request accepted and notification email sent to user.")
 
     elif action == 'reject':
+        rejection_reason = request.POST.get('rejection_reason', 'The expert is unavailable at this time.').strip()
         booking.status = SessionStatus.REJECTED
         booking.save()
 
         create_notification(
             user=booking.user,
             title="Session Request Update",
-            message=f"{booking.expert.user.get_full_name()} was unable to accept your request."
+            message=f"{booking.expert.user.get_full_name()} declined your request. Reason: {rejection_reason}"
         )
 
-        # Trigger Rejection Email
+        effective_date = booking.proposed_date or (booking.slot.date if booking.slot else None)
+        session_date_str = effective_date.strftime('%B %d, %Y') if effective_date else "Scheduled Date"
+        session_time_str = booking.slot.start_time.strftime('%I:%M %p') if booking.slot and hasattr(booking.slot, 'start_time') else "Scheduled Time"
+
         send_session_email_notification(
             recipient_email=booking.user.email,
             subject="Update on your Adwise Session Request",
             template_name='emails/booking_status_email.html',
             context={
                 'user_name': booking.user.first_name,
-                'message_body': f"Unfortunately, {booking.expert.user.get_full_name()} is unavailable for the requested slot. You can explore other experts on Adwise.",
+                'message_body': f"Unfortunately, {booking.expert.user.get_full_name()} was unable to accept your request. Reason provided: {rejection_reason}",
                 'expert_name': booking.expert.user.get_full_name(),
-                'session_date': booking.slot.date.strftime('%B %d, %Y'),
-                'session_time': booking.slot.start_time.strftime('%I:%M %p'),
+                'session_date': session_date_str,
+                'session_time': session_time_str,
                 'action_url': 'http://127.0.0.1:8000/bookings/search/'
             }
         )
         messages.info(request, "Session request rejected.")
+
+    elif action == 'postpone':
+        proposed_date_str = request.POST.get('proposed_date')
+        proposed_start_str = request.POST.get('proposed_start_time')
+        proposed_end_str = request.POST.get('proposed_end_time')
+
+        if proposed_date_str and proposed_start_str and proposed_end_str:
+            p_date = datetime.strptime(proposed_date_str, '%Y-%m-%d').date()
+            p_start = datetime.strptime(proposed_start_str, '%H:%M').time()
+            p_end = datetime.strptime(proposed_end_str, '%H:%M').time()
+
+            conflict_exists = ExpertAvailability.objects.filter(
+                expert=booking.expert,
+                date=p_date,
+                start_time=p_start,
+                end_time=p_end,
+                is_booked=True
+            ).exists()
+
+            if conflict_exists:
+                messages.error(request, "Cannot postpone: You already have a confirmed booking at that proposed date and time.")
+                return redirect('bookings:expert_requests')
+
+            booking.proposed_date = p_date
+            booking.proposed_start_time = p_start
+            booking.proposed_end_time = p_end
+            booking.status = SessionStatus.POSTPONED
+            booking.save()
+
+            create_notification(
+                user=booking.user,
+                title="Session Postponement Proposal",
+                message=f"{booking.expert.user.get_full_name()} proposed a new session time: {p_date.strftime('%b %d, %Y')} at {p_start.strftime('%I:%M %p')}."
+            )
+            messages.success(request, "Postponement proposal sent to the user.")
 
     return redirect('bookings:expert_requests')
 
@@ -600,147 +739,27 @@ def user_bookings_view(request):
     if request.user.role != UserRole.USER:
         return redirect('accounts:expert_dashboard')
 
-    bookings = SessionBooking.objects.filter(user=request.user).select_related('expert__user', 'slot')
+    check_and_release_expired_locks()
 
+    bookings = SessionBooking.objects.filter(user=request.user).select_related('expert__user', 'slot')
     now = timezone.now()
+    today = now.date()
+    current_time = now.time()
+
+    # Determine if the session is completely over to unlock the review feature
     for b in bookings:
-        if b.status == SessionStatus.ACCEPTED and b.payment_deadline and now > b.payment_deadline:
-            b.status = SessionStatus.EXPIRED
-            b.save()
+        session_date = b.proposed_date or (b.slot.date if (b.slot and b.slot.date) else None)
+        end_time = b.proposed_end_time or (b.slot.end_time if b.slot else None)
+
+        if session_date and end_time:
+            b.is_past = (session_date < today) or (session_date == today and end_time <= current_time)
+        else:
+            b.is_past = False
 
     return render(request, 'bookings/user_bookings.html', {
         'bookings': bookings,
         'now': now
     })
-
-@login_required
-@transaction.atomic
-def process_payment_view(request, booking_id):
-
-    booking = get_object_or_404(
-        SessionBooking.objects.select_for_update(),
-        id=booking_id,
-        user=request.user,
-        status=SessionStatus.ACCEPTED
-    )
-
-    # Check payment deadline
-    if booking.is_payment_expired():
-
-        booking.status = SessionStatus.EXPIRED
-        booking.save(update_fields=['status'])
-
-        messages.error(
-            request,
-            "The 24-hour payment window for this session has expired."
-        )
-
-        return redirect('bookings:user_bookings')
-
-    if request.method == 'POST':
-
-        # ==========================================
-        # 1. CONFIRM BOOKING
-        # ==========================================
-
-        booking.status = SessionStatus.CONFIRMED
-
-        # ==========================================
-        # 2. GENERATE JITSI MEETING LINK
-        # ==========================================
-
-        booking.generate_meeting_link()
-
-        # ==========================================
-        # 3. LOCK THE SLOT
-        # ==========================================
-
-        slot = booking.slot
-
-        slot.is_booked = True
-        slot.save(update_fields=['is_booked'])
-
-        # ==========================================
-        # 4. REJECT OTHER REQUESTS FOR SAME SLOT
-        # ==========================================
-
-        SessionBooking.objects.filter(
-            slot=slot,
-            status=SessionStatus.REQUESTED
-        ).exclude(
-            id=booking.id
-        ).update(
-            status=SessionStatus.REJECTED
-        )
-
-        # ==========================================
-        # 5. SAVE BOOKING
-        # ==========================================
-
-        booking.save(update_fields=['status'])
-
-        # ==========================================
-        # 6. CREATE NOTIFICATION FOR EXPERT
-        # ==========================================
-
-        create_notification(
-            user=booking.expert.user,
-            title="Session Confirmed & Meeting Room Ready!",
-            message=(
-                f"{request.user.get_full_name()} completed payment. "
-                f"Your video meeting room is ready."
-            )
-        )
-
-        # ==========================================
-        # 7. SEND EMAIL TO USER
-        # ==========================================
-
-        send_session_email_notification(
-            recipient_email=booking.user.email,
-            subject="Session Confirmed - Your Video Meeting Link",
-            template_name='emails/booking_status_email.html',
-            context={
-                'user_name': booking.user.first_name,
-
-                'message_body': (
-                    f"Your session with "
-                    f"{booking.expert.user.get_full_name()} "
-                    f"is confirmed! You can join the video "
-                    f"call using the link below at your "
-                    f"scheduled time."
-                ),
-
-                'expert_name': (
-                    booking.expert.user.get_full_name()
-                ),
-
-                'session_date': (
-                    slot.date.strftime('%B %d, %Y')
-                ),
-
-                'session_time': (
-                    f"{slot.start_time.strftime('%I:%M %p')} - "
-                    f"{slot.end_time.strftime('%I:%M %p')}"
-                ),
-
-                'action_url': booking.meeting_link
-            }
-        )
-
-        messages.success(
-            request,
-            "Payment successful! Your consultation session "
-            "is now confirmed."
-        )
-
-        return redirect('bookings:user_bookings')
-
-    return render(
-        request,
-        'bookings/payment.html',
-        {'booking': booking}
-    )
 
 
 
@@ -763,7 +782,7 @@ def respond_postpone_view(request, booking_id, response_action):
         )
         booking.slot = new_slot
         booking.status = SessionStatus.ACCEPTED
-        booking.set_payment_deadline()
+        booking.payment_deadline = timezone.now() + timedelta(hours=24)
         booking.save()
 
         create_notification(
@@ -807,7 +826,6 @@ def submit_review_view(request, booking_id):
         status=SessionStatus.CONFIRMED
     )
 
-    # Prevent duplicate reviews for the same session
     if hasattr(booking, 'review'):
         messages.warning(request, "You have already submitted a review for this session.")
         return redirect('bookings:user_bookings')
@@ -832,8 +850,6 @@ def submit_review_view(request, booking_id):
     })
 
 
-
 def get_subcategories_api(request):
     category_id = request.GET.get('category_id')
-    # logic to fetch subcategories...
     return JsonResponse({'subcategories': list(subcategories)})

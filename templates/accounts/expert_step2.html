@@ -35,11 +35,76 @@
                         <label for="id_category" class="form-label fw-semibold text-secondary small">Category</label>
                         {{ form.category }}
                     </div>
+                    <!-- Subcategories Custom Multi-Select Dropdown -->
                     <div class="col-md-6">
-                        <label for="id_subcategory"
-                            class="form-label fw-semibold text-secondary small">Subcategory</label>
-                        {{ form.subcategory }}
+                        <label class="form-label fw-semibold text-secondary small">
+                            Subcategories <span class="text-primary fw-normal">(Select Multiple)</span>
+                        </label>
+
+                        <!-- Hidden Select Input for Django Form Submission -->
+                        <select name="subcategory" id="id_subcategory" class="d-none" multiple>
+                            <!-- Populated via JS -->
+                        </select>
+
+                        <!-- Custom Multi-Select UI Container -->
+                        <div class="dropdown custom-multiselect-dropdown">
+                            <button
+                                class="form-select text-start d-flex align-items-center justify-content-between bg-white w-100 py-2 px-3 shadow-none"
+                                type="button" id="subcategoriesDropdownBtn" data-bs-toggle="dropdown"
+                                data-bs-auto-close="outside" aria-expanded="false" style="min-height: 42px;">
+                                <div id="selectedSubcategoriesTags"
+                                    class="d-flex flex-wrap gap-1 align-items-center me-2">
+                                    <span class="text-muted placeholder-text">Select Subcategories</span>
+                                </div>
+                                
+                            </button>
+
+                            <ul class="dropdown-menu w-100 shadow-sm border p-2 mt-1" id="subcategoriesDropdownList"
+                                style="max-height: 220px; overflow-y: auto;" aria-labelledby="subcategoriesDropdownBtn">
+                                <li class="px-2 py-1 text-muted small text-center italic" id="noCategorySelectedNotice">
+                                    Please select a Category first.</li>
+                            </ul>
+                        </div>
                     </div>
+
+                    <style>
+                        .custom-multiselect-dropdown .dropdown-menu {
+                            border-radius: 10px;
+                            z-index: 1050;
+                        }
+
+                        .custom-multiselect-dropdown .dropdown-item {
+                            border-radius: 6px;
+                            padding: 6px 10px;
+                            cursor: pointer;
+                        }
+
+                        .custom-multiselect-dropdown .dropdown-item:hover {
+                            background-color: #f4f6fb;
+                        }
+
+                        .subcategory-pill {
+                            background-color: #e0ecff;
+                            color: #0d6efd;
+                            font-size: 0.78rem;
+                            font-weight: 600;
+                            padding: 2px 8px;
+                            border-radius: 50rem;
+                            display: inline-flex;
+                            align-items: center;
+                            gap: 4px;
+                        }
+
+                        .subcategory-pill .remove-pill {
+                            cursor: pointer;
+                            font-size: 0.7rem;
+                            opacity: 0.7;
+                        }
+
+                        .subcategory-pill .remove-pill:hover {
+                            opacity: 1;
+                        }
+                    </style>
                 </div>
 
                 <!-- Qualification & Experience -->
@@ -74,6 +139,11 @@
                     <label for="{{ form.hourly_rate.id_for_label }}"
                         class="form-label fw-semibold text-secondary small">Consultation Fee (per 60 mins)</label>
                     {{ form.hourly_rate }}
+                    <div id="hourly-rate-error" class="text-danger small mt-1">
+                        {% if form.hourly_rate.errors %}
+                        {{ form.hourly_rate.errors|striptags }}
+                        {% endif %}
+                    </div>
                     <div class="form-text small text-muted">You can adjust rates anytime from your expert dashboard.
                     </div>
                 </div>
@@ -132,42 +202,116 @@
         const stateSelect = document.getElementById("id_state");
         const districtSelect = document.getElementById("id_district");
         const citySelect = document.getElementById("id_city");
+        const dropdownList = document.getElementById("subcategoriesDropdownList");
+        const tagsContainer = document.getElementById("selectedSubcategoriesTags");
+        // Enable multi-select attribute dynamically on subcategory dropdown
+        if (subcategorySelect) {
+            subcategorySelect.setAttribute("multiple", "multiple");
+            subcategorySelect.classList.add("form-select");
+            subcategorySelect.style.minHeight = "110px";
+        }
 
-        function loadSubcategories(categoryId) {
-            if (!subcategorySelect) return;
+        function renderSubcategoriesDropdown(categoryId) {
+            if (!dropdownList) return;
 
-            subcategorySelect.innerHTML = '<option value="">Select Subcategory</option>';
-            if (!categoryId) return;
+            dropdownList.innerHTML = '';
+            subcategorySelect.innerHTML = '';
+
+            if (!categoryId) {
+                dropdownList.innerHTML = '<li class="px-2 py-1 text-muted small text-center" id="noCategorySelectedNotice">Please select a Category first.</li>';
+                updateTagsDisplay();
+                return;
+            }
 
             fetch(`/categories/get-subcategories/?category_id=${categoryId}`)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.json();
-                })
+                .then(res => res.json())
                 .then(data => {
-                    console.log("Subcategory API Response:", data);
-                    if (Array.isArray(data) && data.length > 0) {
-                        data.forEach(item => {
-                            const option = document.createElement("option");
-                            option.value = item.id || item.pk;
-                            option.textContent = item.name || item.title;
-                            subcategorySelect.appendChild(option);
-                        });
+                    const list = Array.isArray(data) ? data : (data.subcategories || data.results || []);
+
+                    if (list.length === 0) {
+                        dropdownList.innerHTML = '<li class="px-2 py-1 text-muted small text-center">No subcategories found.</li>';
+                        updateTagsDisplay();
+                        return;
                     }
+
+                    list.forEach(item => {
+                        const itemId = String(item.id || item.pk);
+                        const itemName = item.name || item.title;
+
+                        // 1. Append hidden select option
+                        const opt = document.createElement("option");
+                        opt.value = itemId;
+                        opt.textContent = itemName;
+                        subcategorySelect.appendChild(opt);
+
+                        // 2. Append checkbox item to custom dropdown
+                        const li = document.createElement("li");
+                        li.className = "dropdown-item d-flex align-items-center gap-2";
+                        li.innerHTML = `
+                        <input class="form-check-input subcat-checkbox" type="checkbox" value="${itemId}" id="chk_${itemId}">
+                        <label class="form-check-label w-100 small fw-medium text-dark cursor-pointer" for="chk_${itemId}">
+                            ${itemName}
+                        </label>
+                    `;
+                        dropdownList.appendChild(li);
+                    });
+
+                    // Attach change listeners to checkboxes
+                    document.querySelectorAll('.subcat-checkbox').forEach(chk => {
+                        chk.addEventListener('change', function () {
+                            const opt = subcategorySelect.querySelector(`option[value="${this.value}"]`);
+                            if (opt) opt.selected = this.checked;
+                            updateTagsDisplay();
+                        });
+                    });
+
+                    updateTagsDisplay();
                 })
-                .catch(err => console.error("Error fetching subcategories:", err));
+                .catch(err => console.error("Error loading subcategories:", err));
+        }
+
+        function updateTagsDisplay() {
+            tagsContainer.innerHTML = '';
+            const selectedCheckboxes = document.querySelectorAll('.subcat-checkbox:checked');
+
+            if (selectedCheckboxes.length === 0) {
+                tagsContainer.innerHTML = '<span class="text-muted placeholder-text">Select Subcategories</span>';
+                return;
+            }
+
+            selectedCheckboxes.forEach(chk => {
+                const labelText = chk.nextElementSibling.textContent.trim();
+                const pill = document.createElement('span');
+                pill.className = 'subcategory-pill';
+                pill.innerHTML = `
+                ${labelText}
+                <i class="fa-solid fa-xmark remove-pill" data-value="${chk.value}"></i>
+            `;
+
+                // Remove tag click event
+                pill.querySelector('.remove-pill').addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    const val = this.getAttribute('data-value');
+                    const targetChk = document.getElementById(`chk_${val}`);
+                    if (targetChk) {
+                        targetChk.checked = false;
+                        const opt = subcategorySelect.querySelector(`option[value="${val}"]`);
+                        if (opt) opt.selected = false;
+                        updateTagsDisplay();
+                    }
+                });
+
+                tagsContainer.appendChild(pill);
+            });
         }
 
         if (categorySelect) {
             categorySelect.addEventListener("change", function () {
-                loadSubcategories(this.value);
+                renderSubcategoriesDropdown(this.value);
             });
 
-            // Trigger on initial page load if category is pre-selected
             if (categorySelect.value) {
-                loadSubcategories(categorySelect.value);
+                renderSubcategoriesDropdown(categorySelect.value);
             }
         }
 
@@ -214,147 +358,141 @@
                     .catch(err => console.error("Error fetching cities:", err));
             });
         }
+
+        const qualificationInput = document.getElementById("id_qualification");
+        const qualificationErrorDiv = document.getElementById("qualification-error");
+
+        const experienceInput = document.getElementById("id_experience_years");
+        const experienceErrorDiv = document.getElementById("experience-error");
+
+        // 1. Validate Qualification
+        function validateQualification() {
+            const val = qualificationInput.value.trim();
+            if (val === "") {
+                qualificationErrorDiv.textContent = "Highest qualification is required.";
+                qualificationInput.classList.add("is-invalid");
+                qualificationInput.classList.remove("is-valid");
+            } else if (val.length < 2) {
+                qualificationErrorDiv.textContent = "Qualification must be at least 2 characters long.";
+                qualificationInput.classList.add("is-invalid");
+                qualificationInput.classList.remove("is-valid");
+            } else {
+                qualificationErrorDiv.textContent = "";
+                qualificationInput.classList.remove("is-invalid");
+                qualificationInput.classList.add("is-valid");
+            }
+        }
+
+        // 2. Validate Experience (Years)
+        function validateExperience() {
+            const val = experienceInput.value.trim();
+            const expNum = parseInt(val, 10);
+
+            if (val === "") {
+                experienceErrorDiv.textContent = "Years of experience is required.";
+                experienceInput.classList.add("is-invalid");
+                experienceInput.classList.remove("is-valid");
+            } else if (isNaN(expNum) || expNum < 0 || expNum > 60) {
+                experienceErrorDiv.textContent = "Please enter a realistic experience value (0-60 years).";
+                experienceInput.classList.add("is-invalid");
+                experienceInput.classList.remove("is-valid");
+            } else {
+                experienceErrorDiv.textContent = "";
+                experienceInput.classList.remove("is-invalid");
+                experienceInput.classList.add("is-valid");
+            }
+        }
+
+        if (qualificationInput) {
+            qualificationInput.addEventListener("blur", validateQualification);
+            qualificationInput.addEventListener("input", validateQualification);
+        }
+
+        if (experienceInput) {
+            experienceInput.addEventListener("blur", validateExperience);
+            experienceInput.addEventListener("input", validateExperience);
+        }
+
+        const hourlyRateInput = document.getElementById("id_hourly_rate");
+        const hourlyRateErrorDiv = document.getElementById("hourly-rate-error");
+
+        function validateHourlyRate() {
+            let val = hourlyRateInput.value.trim();
+
+            if (val.length > 8) {
+                hourlyRateInput.value = val.slice(0, 8);
+                val = hourlyRateInput.value;
+            }
+
+            const rateNum = parseFloat(val);
+
+            if (val === "") {
+                hourlyRateErrorDiv.textContent = "Consultation fee is required.";
+                hourlyRateInput.classList.add("is-invalid");
+                hourlyRateInput.classList.remove("is-valid");
+            } else if (isNaN(rateNum)) {
+                hourlyRateErrorDiv.textContent = "Please enter a valid amount.";
+                hourlyRateInput.classList.add("is-invalid");
+                hourlyRateInput.classList.remove("is-valid");
+            } else if (rateNum < 100) {
+                hourlyRateErrorDiv.textContent = "Consultation fee must be at least ₹100.";
+                hourlyRateInput.classList.add("is-invalid");
+                hourlyRateInput.classList.remove("is-valid");
+            } else if (rateNum > 50000) {
+                hourlyRateErrorDiv.textContent = "Consultation fee cannot exceed ₹50,000.";
+                hourlyRateInput.classList.add("is-invalid");
+                hourlyRateInput.classList.remove("is-valid");
+            } else {
+                hourlyRateErrorDiv.textContent = "";
+                hourlyRateInput.classList.remove("is-invalid");
+                hourlyRateInput.classList.add("is-valid");
+            }
+        }
+
+        if (hourlyRateInput) {
+            hourlyRateInput.addEventListener("blur", validateHourlyRate);
+            hourlyRateInput.addEventListener("input", validateHourlyRate);
+        }
+
+        const bioInput = document.getElementById("id_bio");
+        const bioErrorDiv = document.getElementById("bio-error");
+        const bioCounter = document.getElementById("bio-char-counter");
+
+        function updateBioCounter() {
+            if (bioCounter && bioInput) {
+                bioCounter.textContent = `${bioInput.value.length} / 1000`;
+            }
+        }
+
+        function validateBio() {
+            const val = bioInput.value.trim();
+
+            updateBioCounter();
+
+            if (val === "") {
+                bioErrorDiv.textContent = "Professional bio is required.";
+                bioInput.classList.add("is-invalid");
+                bioInput.classList.remove("is-valid");
+            } else if (val.length < 50) {
+                bioErrorDiv.textContent = `Bio must be at least 50 characters long. (${50 - val.length} more needed)`;
+                bioInput.classList.add("is-invalid");
+                bioInput.classList.remove("is-valid");
+            } else if (val.length > 1000) {
+                bioErrorDiv.textContent = "Bio cannot exceed 1,000 characters.";
+                bioInput.classList.add("is-invalid");
+                bioInput.classList.remove("is-valid");
+            } else {
+                bioErrorDiv.textContent = "";
+                bioInput.classList.remove("is-invalid");
+                bioInput.classList.add("is-valid");
+            }
+        }
+
+        if (bioInput) {
+            bioInput.addEventListener("blur", validateBio);
+            bioInput.addEventListener("input", validateBio);
+            updateBioCounter();
+        }
     });
-
-    const qualificationInput = document.getElementById("id_qualification");
-    const qualificationErrorDiv = document.getElementById("qualification-error");
-
-    const experienceInput = document.getElementById("id_experience_years");
-    const experienceErrorDiv = document.getElementById("experience-error");
-
-    // 1. Validate Qualification
-    function validateQualification() {
-        const val = qualificationInput.value.trim();
-        if (val === "") {
-            qualificationErrorDiv.textContent = "Highest qualification is required.";
-            qualificationInput.classList.add("is-invalid");
-            qualificationInput.classList.remove("is-valid");
-        } else if (val.length < 2) {
-            qualificationErrorDiv.textContent = "Qualification must be at least 2 characters long.";
-            qualificationInput.classList.add("is-invalid");
-            qualificationInput.classList.remove("is-valid");
-        } else {
-            qualificationErrorDiv.textContent = "";
-            qualificationInput.classList.remove("is-invalid");
-            qualificationInput.classList.add("is-valid");
-        }
-    }
-
-    // 2. Validate Experience (Years)
-    function validateExperience() {
-        const val = experienceInput.value.trim();
-        const expNum = parseInt(val, 10);
-
-        if (val === "") {
-            experienceErrorDiv.textContent = "Years of experience is required.";
-            experienceInput.classList.add("is-invalid");
-            experienceInput.classList.remove("is-valid");
-        } else if (isNaN(expNum) || expNum < 0 || expNum > 60) {
-            experienceErrorDiv.textContent = "Please enter a realistic experience value (0-60 years).";
-            experienceInput.classList.add("is-invalid");
-            experienceInput.classList.remove("is-valid");
-        } else {
-            experienceErrorDiv.textContent = "";
-            experienceInput.classList.remove("is-invalid");
-            experienceInput.classList.add("is-valid");
-        }
-    }
-
-    // Event Listeners
-    if (qualificationInput) {
-        qualificationInput.addEventListener("blur", validateQualification);
-        qualificationInput.addEventListener("input", validateQualification);
-    }
-
-    if (experienceInput) {
-        experienceInput.addEventListener("blur", validateExperience);
-        experienceInput.addEventListener("input", validateExperience);
-    }
-
-    const hourlyRateInput = document.getElementById("id_hourly_rate");
-    const hourlyRateErrorDiv = document.getElementById("hourly-rate-error");
-
-    function validateHourlyRate() {
-        let val = hourlyRateInput.value.trim();
-
-        // Prevent typing more than 8 digits/characters overall
-        if (val.length > 8) {
-            hourlyRateInput.value = val.slice(0, 8);
-            val = hourlyRateInput.value;
-        }
-
-        const rateNum = parseFloat(val);
-
-        if (val === "") {
-            hourlyRateErrorDiv.textContent = "Consultation fee is required.";
-            hourlyRateInput.classList.add("is-invalid");
-            hourlyRateInput.classList.remove("is-valid");
-        } else if (isNaN(rateNum)) {
-            hourlyRateErrorDiv.textContent = "Please enter a valid amount.";
-            hourlyRateInput.classList.add("is-invalid");
-            hourlyRateInput.classList.remove("is-valid");
-        } else if (rateNum < 100) {
-            hourlyRateErrorDiv.textContent = "Consultation fee must be at least ₹100.";
-            hourlyRateInput.classList.add("is-invalid");
-            hourlyRateInput.classList.remove("is-valid");
-        } else if (rateNum > 50000) {
-            hourlyRateErrorDiv.textContent = "Consultation fee cannot exceed ₹50,000.";
-            hourlyRateInput.classList.add("is-invalid");
-            hourlyRateInput.classList.remove("is-valid");
-        } else {
-            hourlyRateErrorDiv.textContent = "";
-            hourlyRateInput.classList.remove("is-invalid");
-            hourlyRateInput.classList.add("is-valid");
-        }
-    }
-
-    if (hourlyRateInput) {
-        hourlyRateInput.addEventListener("blur", validateHourlyRate);
-        hourlyRateInput.addEventListener("input", validateHourlyRate);
-    }
-
-    const bioInput = document.getElementById("id_bio");
-    const bioErrorDiv = document.getElementById("bio-error");
-    const bioCounter = document.getElementById("bio-char-counter");
-
-    // Helper to update counter without triggering errors
-    function updateBioCounter() {
-        if (bioCounter && bioInput) {
-            bioCounter.textContent = `${bioInput.value.length} / 1000`;
-        }
-    }
-
-    function validateBio() {
-        const val = bioInput.value.trim();
-
-        updateBioCounter();
-
-        if (val === "") {
-            bioErrorDiv.textContent = "Professional bio is required.";
-            bioInput.classList.add("is-invalid");
-            bioInput.classList.remove("is-valid");
-        } else if (val.length < 50) {
-            bioErrorDiv.textContent = `Bio must be at least 50 characters long. (${50 - val.length} more needed)`;
-            bioInput.classList.add("is-invalid");
-            bioInput.classList.remove("is-valid");
-        } else if (val.length > 1000) {
-            bioErrorDiv.textContent = "Bio cannot exceed 1,000 characters.";
-            bioInput.classList.add("is-invalid");
-            bioInput.classList.remove("is-valid");
-        } else {
-            bioErrorDiv.textContent = "";
-            bioInput.classList.remove("is-invalid");
-            bioInput.classList.add("is-valid");
-        }
-    }
-
-    if (bioInput) {
-        // Only validate when user interacts with the input
-        bioInput.addEventListener("blur", validateBio);
-        bioInput.addEventListener("input", validateBio);
-
-        // Initial load: ONLY set the character counter, do NOT run full validation
-        updateBioCounter();
-    }
 </script>
 {% endblock %}

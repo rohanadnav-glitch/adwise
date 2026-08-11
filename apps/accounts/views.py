@@ -1,35 +1,39 @@
-from django.shortcuts import render, redirect
 from django.contrib import messages
-from django.contrib.auth import get_user_model, login, logout, authenticate
 from django.contrib.auth.decorators import login_required
+from .forms import UserRegistrationForm, ExpertStep1Form, ExpertStep2Form, LoginForm
+from .models import CustomUser, UserRole, ExpertProfile
 from django.shortcuts import render, redirect, get_object_or_404
+from django.db import transaction
+from apps.categories.models import Category, SubCategory
+from apps.locations.models import State, District, City
+from django.contrib.auth import get_user_model, login, logout, authenticate
 from .forms import (
     UserRegistrationForm,
     ExpertStep1Form,
     ExpertStep2Form,
-    ExpertProfileUpdateForm,  # <--- Add this import
+    ExpertProfileUpdateForm,
+    LoginForm,
 )
-
-
-# At the top of apps/accounts/views.py
-from .models import CustomUser, UserRole, ExpertProfile
-
-# Imports from forms and models
-from .forms import UserRegistrationForm, ExpertStep1Form, ExpertStep2Form, LoginForm
-from .models import UserRole, ExpertProfile
-
-# ==========================================
+# ===================================================
 # HELPER: ROLE-BASED ACCESS CONTROL REDIRECT
-# ==========================================
+# ===================================================
 def redirect_by_role(user):
-    if user.role == UserRole.EXPERT:
-        return redirect('accounts:expert_dashboard')
-    return redirect('accounts:user_dashboard')
+    # Check string or choice enum match
+    if getattr(user, 'role', None) == UserRole.EXPERT or getattr(user, 'role', None) == 'EXPERT':
+        return redirect('accounts:expert_dashboard')  # Or 'accounts:expert_dashboard'
+    return redirect('accounts:user_dashboard')          # Or 'accounts:user_dashboard'
 
 
-# ==========================================
-# USER REGISTRATION VIEW
-# ==========================================
+def home(request):
+    # If the user is already logged in, redirect them to their respective dashboard
+    if request.user.is_authenticated:
+        return redirect_by_role(request.user)
+
+    # If guest/anonymous user, render the landing page from templates/home.html
+    return render(request, 'home.html')
+
+
+
 User = get_user_model()
 
 # ==========================================
@@ -147,16 +151,8 @@ def expert_register_step2(request):
 
 
     
-# Step 3: Summary Preview & Atomic Commit
-from django.shortcuts import render, redirect
-from django.contrib import messages
-from django.contrib.auth import get_user_model, login
-from django.db import transaction
 
-# Model imports
-from .models import UserRole, ExpertProfile
-from apps.categories.models import Category, SubCategory
-from apps.locations.models import State, District, City
+
 
 User = get_user_model()
 
@@ -275,7 +271,7 @@ def logout_view(request):
 
 
 # ==========================================
-# DASHBOARD PLACEHOLDERS (Phase 3 will populate)
+# DASHBOARD PLACEHOLDERS 
 # ==========================================
 @login_required
 def user_dashboard_view(request):
@@ -308,10 +304,13 @@ def edit_expert_profile_view(request):
             form.save()
             messages.success(request, f"Your consultation fee has been updated to ₹{expert_profile.hourly_rate}/hr!")
             return redirect('bookings:schedule_manager')
+        else:
+            messages.error(request, "Please fix the validation errors below.")
     else:
         form = ExpertProfileUpdateForm(instance=expert_profile)
 
     return render(request, 'accounts/edit_expert_profile.html', {
         'form': form,
-        'expert': expert_profile
+        'expert': expert_profile,
+        'expert_profile': expert_profile
     })
