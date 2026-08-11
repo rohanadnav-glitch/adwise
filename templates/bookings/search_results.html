@@ -99,10 +99,8 @@
                             </div>
                             <div class="mb-2">
                                 {% if expert.average_rating > 0 %}
-                                <span class="text-warning fw-bold"><i class="fa-solid fa-star"></i> {{
-                                    expert.average_rating|floatformat:1 }}</span>
-                                <span class="text-muted small">({{ expert.total_reviews_count }} review{{
-                                    expert.total_reviews_count|pluralize }})</span>
+                                <span class="text-warning fw-bold"><i class="fa-solid fa-star"></i> {{expert.average_rating|floatformat:1}}</span>
+                                <span class="text-muted small">({{expert.total_reviews_count}} review{{expert.total_reviews_count|pluralize}})</span>
                                 {% else %}
                                 <span class="text-muted small"><i class="fa-regular fa-star"></i> New Expert (No ratings
                                     yet)</span>
