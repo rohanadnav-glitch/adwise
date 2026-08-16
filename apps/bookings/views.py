@@ -462,13 +462,23 @@ def expert_detail_view(request, expert_id):
 @transaction.atomic
 def process_payment_view(request, booking_id):
 
+    # 1. Fetch the booking without the strict 'ACCEPTED' filter
     booking = get_object_or_404(
         SessionBooking.objects.select_for_update(),
         id=booking_id,
-        user=request.user,
-        status=SessionStatus.ACCEPTED
+        user=request.user
     )
 
+    # 2. Prevent 404 crashes on double-clicks or page reloads
+    if booking.status == SessionStatus.CONFIRMED:
+        messages.info(request, "Payment was already successful for this session.")
+        return redirect('bookings:user_bookings')
+
+    if booking.status != SessionStatus.ACCEPTED:
+        messages.error(request, "This session cannot be paid for at this time.")
+        return redirect('bookings:user_bookings')
+
+    # 3. Check payment deadline
     if booking.payment_deadline and timezone.now() > booking.payment_deadline:
         booking.status = SessionStatus.EXPIRED
         booking.save(update_fields=['status'])
@@ -479,9 +489,12 @@ def process_payment_view(request, booking_id):
         import uuid
         booking.status = SessionStatus.CONFIRMED
         
-        # Generate the meeting link directly in the view
-        unique_room_id = f"Adwise-Consultation-{booking.id}-{uuid.uuid4().hex[:10]}"
-        booking.meeting_link = f"https://meet.jit.si/{unique_room_id}"
+        
+        # Generate the CUSTOM internal meeting link
+        unique_room_id = f"adwise-room-{booking.id}-{uuid.uuid4().hex[:8]}"
+        
+        # Point to your newly created videocall app
+        booking.meeting_link = f"/call/{unique_room_id}/"
 
         slot = booking.slot
         # Only lock out the master slot if it is a ONE-TIME slot
@@ -528,6 +541,7 @@ def process_payment_view(request, booking_id):
         return redirect('bookings:user_bookings')
 
     return render(request, 'bookings/payment.html', {'booking': booking})
+
 
 # ==========================================
 # 4. USER: REQUEST SESSION & BOOKINGS
@@ -617,6 +631,22 @@ def expert_requests_view(request):
 
     expert = get_object_or_404(ExpertProfile, user=request.user)
     requests_list = SessionBooking.objects.filter(expert=expert).select_related('user', 'slot')
+
+    # FIX: Use local machine time instead of UTC to match your saved slots
+    from datetime import datetime
+    now = datetime.now()
+    today = now.date()
+    current_time = now.time()
+
+    # Determine if the session time has passed for the expert's dashboard
+    for req in requests_list:
+        session_date = req.proposed_date or (req.slot.date if (req.slot and req.slot.date) else None)
+        end_time = req.proposed_end_time or (req.slot.end_time if req.slot else None)
+
+        if session_date and end_time:
+            req.is_past = (session_date < today) or (session_date == today and end_time <= current_time)
+        else:
+            req.is_past = False
 
     return render(request, 'bookings/expert_requests.html', {
         'requests_list': requests_list
@@ -742,7 +772,10 @@ def user_bookings_view(request):
     check_and_release_expired_locks()
 
     bookings = SessionBooking.objects.filter(user=request.user).select_related('expert__user', 'slot')
-    now = timezone.now()
+    
+    # FIX: Use local machine time instead of UTC to match your saved slots
+    from datetime import datetime
+    now = datetime.now()
     today = now.date()
     current_time = now.time()
 
@@ -760,8 +793,6 @@ def user_bookings_view(request):
         'bookings': bookings,
         'now': now
     })
-
-
 
 @login_required
 @transaction.atomic

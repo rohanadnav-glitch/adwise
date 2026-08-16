@@ -104,6 +104,15 @@ def expert_register_step1(request):
     return render(request, 'accounts/expert_step1.html', {'form': form})
 
 
+
+
+    
+
+
+
+
+
+
 # ==========================================
 # EXPERT REGISTRATION - STEP 2 VIEW
 # ==========================================
@@ -115,7 +124,6 @@ def expert_register_step2(request):
 
     if request.method == 'POST':
         form = ExpertStep2Form(request.POST)
-        print(form)
         if form.is_valid():
             cleaned = form.cleaned_data
             
@@ -125,10 +133,14 @@ def expert_register_step2(request):
                     return obj.id
                 return obj if obj else None
 
+            # 1. Safely extract the QuerySet into a list of IDs for JSON serialization
+            subcategories_qs = cleaned.get('subcategory')
+            subcategory_ids_list = list(subcategories_qs.values_list('id', flat=True)) if subcategories_qs else []
+
             # Store step 2 data safely
             request.session['expert_wizard_step2'] = {
                 'category_id': get_id(cleaned.get('category')),
-                'subcategory_id': get_id(cleaned.get('subcategory')),
+                'subcategory_id': subcategory_ids_list,  # <--- FIXED: Now stores a list of IDs safely
                 'qualification': cleaned.get('qualification', ''),
                 'experience_years': cleaned.get('experience_years', 0),
                 'hourly_rate': str(cleaned.get('hourly_rate', 0)),
@@ -144,19 +156,29 @@ def expert_register_step2(request):
         else:
             messages.error(request, "Please correct the errors in Step 2 below.")
     else:
-        initial_data = request.session.get('expert_wizard_step2', {})
+        # Map stored session _id keys back to actual form fields so the "Back" button works perfectly
+        session_data = request.session.get('expert_wizard_step2', {})
+        initial_data = {
+            'category': session_data.get('category_id'),
+            'subcategory': session_data.get('subcategory_id', []),
+            'state': session_data.get('state_id'),
+            'district': session_data.get('district_id'),
+            'city': session_data.get('city_id'),
+            'qualification': session_data.get('qualification', ''),
+            'experience_years': session_data.get('experience_years', ''),
+            'hourly_rate': session_data.get('hourly_rate', ''),
+            'bio': session_data.get('bio', ''),
+        }
         form = ExpertStep2Form(initial=initial_data)
 
     return render(request, 'accounts/expert_step2.html', {'form': form})
 
-
-    
-
-
-
 User = get_user_model()
 
 
+# ==========================================
+# EXPERT REGISTRATION - STEP 3 VIEW
+# ==========================================
 def expert_register_step3(request):
     step1 = request.session.get('expert_wizard_step1')
     step2 = request.session.get('expert_wizard_step2')
@@ -168,10 +190,11 @@ def expert_register_step3(request):
 
     # 2. Build context safely with database lookups
     try:
+        subcategory_ids = step2.get('subcategory_id', [])
         context = {
             'step1': step1,
             'category': Category.objects.filter(id=step2.get('category_id')).first(),
-            'subcategory': SubCategory.objects.filter(id=step2.get('subcategory_id')).first(),
+            'subcategories': SubCategory.objects.filter(id__in=subcategory_ids), # <--- FIXED: Fetches multiple
             'qualification': step2.get('qualification', ''),
             'experience_years': step2.get('experience_years', 0),
             'state': State.objects.filter(id=step2.get('state_id')).first(),
@@ -200,10 +223,10 @@ def expert_register_step3(request):
                 )
 
                 # Step B: Create Expert Profile
-                ExpertProfile.objects.create(
+                expert_profile = ExpertProfile.objects.create(
                     user=user,
                     category_id=step2.get('category_id'),
-                    subcategory_id=step2.get('subcategory_id'),
+                    # subcategory_id omitted here because ManyToMany fields must be set after creation
                     qualification=step2.get('qualification'),
                     experience_years=step2.get('experience_years', 0),
                     state_id=step2.get('state_id'),
@@ -212,6 +235,10 @@ def expert_register_step3(request):
                     hourly_rate=step2.get('hourly_rate', 0),
                     bio=step2.get('bio', '')
                 )
+
+                # Step B.2: Safely attach the multiple subcategories
+                if subcategory_ids:
+                    expert_profile.subcategories.set(subcategory_ids)
 
                 # Step C: Clean up session keys
                 request.session.pop('expert_wizard_step1', None)

@@ -8,6 +8,7 @@ urlpatterns = [
     path('categories/', include('apps.categories.urls')),
     path('bookings/', include(('apps.bookings.urls', 'bookings'), namespace='bookings')),
     path('locations/', include(('apps.locations.urls', 'locations'), namespace='locations')),
+    path('call/', include('apps.videocall.urls')),
     path('', home, name='home'),
 
 ]

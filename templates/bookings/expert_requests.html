@@ -39,17 +39,46 @@
                                 <span class="text-muted small">No details provided</span>
                             {% endif %}
                         </td>
-                        <td>
-                            {% if req.status == 'REQUESTED' %}<span class="badge bg-warning text-dark">Pending Action</span>
-                            {% elif req.status == 'ACCEPTED' %}<span class="badge bg-primary">Accepted (Payment Pending)</span>
-                            {% elif req.status == 'CONFIRMED' %}<span class="badge bg-success">Confirmed & Paid</span>
-                            {% elif req.status == 'POSTPONED' %}<span class="badge bg-info text-dark">Postponed</span>
-                            {% elif req.status == 'REJECTED' %}<span class="badge bg-danger">Rejected</span>
-                            {% elif req.status == 'EXPIRED' %}<span class="badge bg-secondary">Expired</span>
-                            {% endif %}
-                        </td>
+                        
+                        <!-- STATUS COLUMN (UPDATED WITH IS_PAST LOGIC) -->
                         <td>
                             {% if req.status == 'REQUESTED' %}
+                                {% if req.is_past %}
+                                    <span class="badge bg-secondary">Expired (Time Passed)</span>
+                                {% else %}
+                                    <span class="badge bg-warning text-dark">Pending Action</span>
+                                {% endif %}
+                            {% elif req.status == 'ACCEPTED' %}
+                                {% if req.is_past %}
+                                    <span class="badge bg-secondary">Expired (Time Passed)</span>
+                                {% else %}
+                                    <span class="badge bg-primary">Accepted (Payment Pending)</span>
+                                {% endif %}
+                            {% elif req.status == 'CONFIRMED' %}
+                                {% if req.is_past %}
+                                    <span class="badge bg-dark">Completed</span>
+                                {% else %}
+                                    <span class="badge bg-success">Confirmed & Paid</span>
+                                {% endif %}
+                            {% elif req.status == 'POSTPONED' %}
+                                {% if req.is_past %}
+                                    <span class="badge bg-secondary">Expired (Time Passed)</span>
+                                {% else %}
+                                    <span class="badge bg-info text-dark">Postponed</span>
+                                {% endif %}
+                            {% elif req.status == 'REJECTED' %}
+                                <span class="badge bg-danger">Rejected</span>
+                            {% elif req.status == 'EXPIRED' %}
+                                <span class="badge bg-secondary">Expired</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- ACTIONS COLUMN (UPDATED WITH IS_PAST LOGIC) -->
+                        <td>
+                            {% if req.is_past and req.status != 'CONFIRMED' %}
+                                <span class="text-muted small">N/A</span>
+                                
+                            {% elif req.status == 'REQUESTED' %}
                                 <a href="{% url 'bookings:expert_action' req.id 'accept' %}" class="btn btn-success btn-sm fw-bold">Accept</a>
                                 
                                 <!-- Reject Modal Trigger Button -->
@@ -126,16 +155,22 @@
                                     </div>
                                   </div>
                                 </div>
+                                
                             {% elif req.status == 'CONFIRMED' %}
-                                {% if req.meeting_link %}
-                                    <a href="{{ req.meeting_link }}" target="_blank" class="btn btn-primary btn-sm fw-bold">
-                                        <i class="fa-solid fa-video me-1"></i> Join Video Session
-                                    </a>
+                                {% if req.is_past %}
+                                    <span class="text-muted small fw-bold">Session Completed</span>
                                 {% else %}
-                                    <a href="https://meet.jit.si/Adwise-Consultation-{{ req.id }}" target="_blank" class="btn btn-primary btn-sm fw-bold">
-                                        <i class="fa-solid fa-video me-1"></i> Join Video Session
-                                    </a>
+                                    {% if req.meeting_link %}
+                                        <a href="{{ req.meeting_link }}" target="_blank" class="btn btn-primary btn-sm fw-bold">
+                                            <i class="fa-solid fa-video me-1"></i> Join Video Session
+                                        </a>
+                                    {% else %}
+                                        <a href="https://meet.jit.si/Adwise-Consultation-{{ req.id }}" target="_blank" class="btn btn-primary btn-sm fw-bold">
+                                            <i class="fa-solid fa-video me-1"></i> Join Video Session
+                                        </a>
+                                    {% endif %}
                                 {% endif %}
+                                
                             {% else %}
                                 <span class="text-muted small">No actions</span>
                             {% endif %}

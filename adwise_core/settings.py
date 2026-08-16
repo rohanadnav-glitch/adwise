@@ -32,8 +32,10 @@ ALLOWED_HOSTS = ['127.0.0.1', 'localhost','.onrender.com']
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
+    'channels',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
@@ -42,6 +44,7 @@ INSTALLED_APPS = [
     'apps.locations',
     'apps.categories',
     'apps.bookings',
+    'apps.videocall',
 ]
 
 AUTH_USER_MODEL = 'accounts.CustomUser'
@@ -159,3 +162,14 @@ SESSION_SAVE_EVERY_REQUEST = True
 
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+
+
+ASGI_APPLICATION = 'adwise_core.asgi.application'
+
+# In-memory layer for development
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer" 
+    },
+}

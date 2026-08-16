@@ -11,10 +11,21 @@
             <table class="table table-bordered align-middle">
                 <tr><th width="30%">Full Name</th><td>{{ step1.first_name }} {{ step1.last_name }}</td></tr>
                 <tr><th>Email / Phone</th><td>{{ step1.email }} | {{ step1.phone_number }}</td></tr>
-                <tr><th>Category</th><td>{{ category.name }} &rarr; {{ subcategory.name }}</td></tr>
+                <tr>
+                    <th>Category</th>
+                    <td>
+                        <strong>{{ category.name }}</strong> &rarr; 
+                        <!-- Safely loop through multiple subcategories -->
+                        {% for sub in subcategories %}
+                            <span class="badge bg-info text-dark">{{ sub.name }}</span>
+                        {% empty %}
+                            <span class="text-muted">None Selected</span>
+                        {% endfor %}
+                    </td>
+                </tr>
                 <tr><th>Qualification</th><td>{{ qualification }}</td></tr>
                 <tr><th>Experience</th><td>{{ experience_years }} Years</td></tr>
-                <tr><th>Consultation Fee</th><td><span class="badge bg-success fs-6">{{ hourly_rate }} / 60 mins</span></td></tr>
+                <tr><th>Consultation Fee</th><td><span class="badge bg-success fs-6">₹{{ hourly_rate }} / 60 mins</span></td></tr>
                 <tr><th>Location</th><td>{{ city.name }}, {{ district.name }}, {{ state.name }}</td></tr>
                 <tr><th>Bio</th><td>{{ bio }}</td></tr>
             </table>
