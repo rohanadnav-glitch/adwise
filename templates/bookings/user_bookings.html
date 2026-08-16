@@ -31,8 +31,7 @@
                         {% else %}
                         <!-- Uses proposed_date to safely render both one-time and recurring dates -->
                         <strong class="text-dark">{{ b.proposed_date|default:b.slot.date|date:"D, d M Y" }}</strong><br>
-                        <small class="text-muted">{{ b.slot.start_time|time:"h:i A" }} - {{ b.slot.end_time|time:"h:i A"
-                            }}</small>
+                        <small class="text-muted">{{ b.slot.start_time|time:"h:i A" }} - {{ b.slot.end_time|time:"h:i A"}}</small>
                         {% endif %}
                     </td>
 
