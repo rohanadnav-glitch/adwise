@@ -16,6 +16,9 @@ class CustomUser(AbstractUser):
         db_index=True
     )
     phone_number = models.CharField(max_length=15, unique=True, db_index=True)
+    
+    # NEW: Date of Birth for profile completeness
+    date_of_birth = models.DateField(null=True, blank=True)
 
     def is_expert(self):
         return self.role == UserRole.EXPERT
@@ -55,7 +58,32 @@ class ExpertProfile(models.Model):
     hourly_rate = models.DecimalField(max_digits=8, decimal_places=2, default=0.00)
     bio = models.TextField(blank=True)
     
+    # ==========================================
+    # NEW FIELDS: Documents, Socials, & Contact
+    # ==========================================
+    resume = models.FileField(upload_to='resumes/', null=True, blank=True)
+    certificate = models.FileField(upload_to='certificates/', null=True, blank=True)
+    
+    linkedin_url = models.URLField(max_length=255, null=True, blank=True)
+    instagram_url = models.URLField(max_length=255, null=True, blank=True)
+    facebook_url = models.URLField(max_length=255, null=True, blank=True)
+    
+    whatsapp_number = models.CharField(max_length=15, null=True, blank=True)
+    
+    # ==========================================
+    # NEW FIELDS: Availability Toggle & Anti-Abuse
+    # ==========================================
+    is_available = models.BooleanField(default=True)
+    availability_toggled_at = models.DateTimeField(null=True, blank=True)
+    
+    # ==========================================
+    # NEW FIELDS: Ranking System Cached Metrics
+    # ==========================================
+    total_sessions_completed = models.PositiveIntegerField(default=0)
+    cached_average_rating = models.DecimalField(max_digits=3, decimal_places=2, default=0.00)
+
     created_at = models.DateTimeField(auto_now_add=True)
+    profile_picture = models.ImageField(upload_to='profile_pics/', null=True, blank=True)
 
     @property
     def average_rating(self):

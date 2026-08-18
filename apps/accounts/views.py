@@ -315,10 +315,9 @@ def expert_dashboard_view(request):
 
 
 
-
 @login_required
 def edit_expert_profile_view(request):
-    """ Allows experts to update their consultation fee, qualification, and bio """
+    """ Allows experts to update their profile, photo, documents, social links, and fee """
     if request.user.role != UserRole.EXPERT:
         messages.error(request, "Only experts can access profile settings.")
         return redirect('accounts:user_dashboard')
@@ -326,11 +325,21 @@ def edit_expert_profile_view(request):
     expert_profile = get_object_or_404(ExpertProfile, user=request.user)
 
     if request.method == 'POST':
-        form = ExpertProfileUpdateForm(request.POST, instance=expert_profile)
+        # NOTE: request.FILES is mandatory to process profile_picture, resume, and certificate
+        form = ExpertProfileUpdateForm(request.POST, request.FILES, instance=expert_profile)
         if form.is_valid():
-            form.save()
-            messages.success(request, f"Your consultation fee has been updated to ₹{expert_profile.hourly_rate}/hr!")
-            return redirect('bookings:schedule_manager')
+            expert_profile = form.save(commit=False)
+            
+            # Save base user fields handled in the form
+            request.user.first_name = form.cleaned_data.get('first_name')
+            request.user.last_name = form.cleaned_data.get('last_name')
+            request.user.date_of_birth = form.cleaned_data.get('date_of_birth')
+            request.user.save()
+            
+            expert_profile.save()
+            
+            messages.success(request, "Your expert profile and settings have been updated successfully!")
+            return redirect('accounts:expert_dashboard')
         else:
             messages.error(request, "Please fix the validation errors below.")
     else:
@@ -341,3 +350,6 @@ def edit_expert_profile_view(request):
         'expert': expert_profile,
         'expert_profile': expert_profile
     })
+
+
+

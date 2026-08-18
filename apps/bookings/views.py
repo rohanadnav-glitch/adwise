@@ -14,6 +14,8 @@ from .forms import ReviewForm
 from django.http import JsonResponse
 from datetime import datetime, timedelta, time
 from .utils import send_session_email_notification, check_and_release_expired_locks
+from django.db.models import Count, Q, FloatField
+from django.db.models.functions import Coalesce
 
 
 # ==========================================
@@ -304,12 +306,20 @@ def search_experts_view(request):
     max_fee = request.GET.get('max_fee')
     selected_date = request.GET.get('date')
 
-    experts = ExpertProfile.objects.select_related(
+    # 1. Base database query with ranking annotations and availability check
+    raw_experts = ExpertProfile.objects.select_related(
         'user', 'category', 'subcategory', 'state', 'district', 'city'
-    ).prefetch_related('subcategories').all()
+    ).prefetch_related('subcategories').annotate(
+        score=(
+            Coalesce('cached_average_rating', 0.0, output_field=FloatField()) * 20 +
+            Coalesce('total_sessions_completed', 0.0, output_field=FloatField()) * 2 +
+            Coalesce('experience_years', 0.0, output_field=FloatField()) * 4
+        )
+    ).filter(is_available=True)
 
+    # Apply all search filters to raw_experts
     if query:
-        experts = experts.filter(
+        raw_experts = raw_experts.filter(
             Q(user__first_name__icontains=query) |
             Q(user__last_name__icontains=query) |
             Q(qualification__icontains=query) |
@@ -318,31 +328,49 @@ def search_experts_view(request):
         ).distinct()
 
     if category_id and category_id.isdigit():
-        experts = experts.filter(category_id=category_id)
+        raw_experts = raw_experts.filter(category_id=category_id)
         
     if subcategory_id and subcategory_id.isdigit():
-        experts = experts.filter(
+        raw_experts = raw_experts.filter(
             Q(subcategory_id=subcategory_id) | Q(subcategories__id=subcategory_id)
         ).distinct()
 
     if state_id and state_id.isdigit():
-        experts = experts.filter(state_id=state_id)
+        raw_experts = raw_experts.filter(state_id=state_id)
     if district_id and district_id.isdigit():
-        experts = experts.filter(district_id=district_id)
+        raw_experts = raw_experts.filter(district_id=district_id)
     if city_id and city_id.isdigit():
-        experts = experts.filter(city_id=city_id)
+        raw_experts = raw_experts.filter(city_id=city_id)
 
     if max_fee:
         try:
-            experts = experts.filter(hourly_rate__lte=float(max_fee))
+            raw_experts = raw_experts.filter(hourly_rate__lte=float(max_fee))
         except ValueError:
             pass
 
     if selected_date:
-        experts = experts.filter(
+        raw_experts = raw_experts.filter(
             availabilities__date=selected_date,
             availabilities__is_booked=False
         ).distinct()
+
+    today = timezone.now().date()
+
+    # 2. Python-level Post-Filtering: Keep ONLY experts who have genuinely active/future open slots
+    experts = []
+    for exp in raw_experts:
+        # Check if the expert has any unbooked slots that are either recurring or scheduled for today/future
+        has_valid_open_slots = exp.availabilities.filter(
+            is_booked=False
+        ).filter(
+            Q(date__gte=today) | Q(is_recurring=True)
+        ).exists()
+
+        if has_valid_open_slots:
+            experts.append(exp)
+
+    # 3. Sort final list by score descending (highest ranking score first)
+    experts.sort(key=lambda x: x.score, reverse=True)
 
     from apps.categories.models import Category
     from apps.locations.models import State
@@ -361,6 +389,7 @@ def search_experts_view(request):
         'selected_date': selected_date,
     }
     return render(request, 'bookings/search_results.html', context)
+
 
 @login_required
 def expert_detail_view(request, expert_id):
