@@ -17,7 +17,8 @@
                     <select name="category" id="id_category" class="form-select">
                         <option value="">All Categories</option>
                         {% for cat in categories %}
-                        <option value="{{ cat.id }}" {% if cat.id == selected_category %}selected{% endif %}>{{ cat.name}}</option>
+                        <option value="{{ cat.id }}" {% if cat.id == selected_category %}selected{% endif %}>{{ cat.name }}
+                        </option>
                         {% endfor %}
                     </select>
                 </div>
@@ -83,23 +84,35 @@
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
                             <h5 class="fw-bold mb-1">{{ expert.user.get_full_name }}</h5>
-                            <span class="badge bg-info text-dark mb-2">{{ expert.category.name }}</span>
+                            <div class="mb-2 d-flex flex-wrap gap-1">
+                                {% if expert.category %}
+                                <span class="badge bg-primary">{{ expert.category.name }}</span>
+                                {% endif %}
+
+                                {% for sub in expert.subcategories.all %}
+                                <span class="badge bg-info text-dark">{{ sub.name }}</span>
+                                {% empty %}
+                                {% if expert.subcategory %}
+                                <span class="badge bg-info text-dark">{{ expert.subcategory.name }}</span>
+                                {% endif %}
+                                {% endfor %}
+                            </div>
                             <div class="mb-2">
                                 {% if expert.average_rating > 0 %}
-                                <span class="text-warning fw-bold"><i class="fa-solid fa-star"></i> {{
-                                    expert.average_rating|floatformat:1 }}</span>
-                                <span class="text-muted small">({{ expert.total_reviews_count }} review{{
-                                    expert.total_reviews_count|pluralize }})</span>
+                                <span class="text-warning fw-bold"><i class="fa-solid fa-star"></i> {{expert.average_rating|floatformat:1}}</span>
+                                <span class="text-muted small">({{expert.total_reviews_count}} review{{expert.total_reviews_count|pluralize}})</span>
                                 {% else %}
                                 <span class="text-muted small"><i class="fa-regular fa-star"></i> New Expert (No ratings
                                     yet)</span>
                                 {% endif %}
                             </div>
                         </div>
-                        <span class="badge bg-success fs-6">₹{{ expert.hourly_rate }}/hr</span>
+                        <span class="badge bg-success fs-6">₹{{ expert.hourly_rate|floatformat:0 }}/hr</span>
                     </div>
-                    <p class="text-muted small mb-2"><strong>Qualification:</strong> {{ expert.qualification }} ({{expert.experience_years}} yrs exp)</p>
-                    <p class="text-muted small mb-2"><strong>Location:</strong> {{ expert.city.name }}, {{expert.state.name}}</p>
+                    <p class="text-muted small mb-2"><strong>Qualification:</strong> {{ expert.qualification }}
+                        ({{expert.experience_years}} yrs exp)</p>
+                    <p class="text-muted small mb-2"><strong>Location:</strong> {{ expert.city.name }},
+                        {{expert.state.name}}</p>
                     <p class="card-text text-truncate">{{ expert.bio }}</p>
                     <div class="mt-auto">
                         <a href="{% url 'bookings:expert_detail' expert.id %}"
@@ -119,29 +132,34 @@
 </div>
 
 {% endblock %}
+
 {% block extra_js %}
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        // 1. Category -> Subcategory
         const categorySelect = document.getElementById('id_category');
         const subcategorySelect = document.getElementById('id_subcategory');
+        const selectedSubcategory = "{{ selected_subcategory }}";
 
-        function fetchSubcategories(categoryId) {
+        function fetchSubcategories(categoryId, targetSubcategoryId = '') {
             if (!subcategorySelect) return;
             subcategorySelect.innerHTML = '<option value="">All Subcategories</option>';
 
             if (!categoryId) return;
 
-            // Updated URL path to standard categories route
             fetch("/categories/get-subcategories/?category_id=" + categoryId)
                 .then(res => res.json())
                 .then(data => {
-                    console.log("Subcategory API Response:", data); // Check browser F12 console
                     const list = Array.isArray(data) ? data : (data.subcategories || data.results || []);
                     list.forEach(item => {
                         const option = document.createElement('option');
                         option.value = item.id || item.pk;
                         option.textContent = item.name || item.title;
+                        
+                        // Keep selected option selected after form submit
+                        if (targetSubcategoryId && String(option.value) === String(targetSubcategoryId)) {
+                            option.selected = true;
+                        }
+                        
                         subcategorySelect.appendChild(option);
                     });
                 })
@@ -149,18 +167,16 @@
         }
 
         if (categorySelect && subcategorySelect) {
-            // Trigger on dropdown selection change
             categorySelect.addEventListener('change', function () {
                 fetchSubcategories(this.value);
             });
 
-            // Trigger immediately on page load if category is pre-selected
             if (categorySelect.value) {
-                fetchSubcategories(categorySelect.value);
+                fetchSubcategories(categorySelect.value, selectedSubcategory);
             }
         }
 
-        // 2. State -> District
+        // State -> District -> City Cascading Dropdowns
         const stateSelect = document.getElementById('id_state');
         const districtSelect = document.getElementById('id_district');
         const citySelect = document.getElementById('id_city');
@@ -168,8 +184,8 @@
         if (stateSelect && districtSelect) {
             stateSelect.addEventListener('change', function () {
                 const stateId = this.value;
-                districtSelect.innerHTML = '<option value="">---------</option>';
-                if (citySelect) citySelect.innerHTML = '<option value="">---------</option>';
+                districtSelect.innerHTML = '<option value="">All Districts</option>';
+                if (citySelect) citySelect.innerHTML = '<option value="">All Cities</option>';
 
                 if (stateId) {
                     fetch("{% url 'locations:get_districts' %}?state_id=" + stateId)
@@ -189,11 +205,10 @@
             });
         }
 
-        // 3. District -> City
         if (districtSelect && citySelect) {
             districtSelect.addEventListener('change', function () {
                 const districtId = this.value;
-                citySelect.innerHTML = '<option value="">---------</option>';
+                citySelect.innerHTML = '<option value="">All Cities</option>';
 
                 if (districtId) {
                     fetch("{% url 'locations:get_cities' %}?district_id=" + districtId)

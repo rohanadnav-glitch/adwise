@@ -42,7 +42,9 @@ class ExpertProfile(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='expert_profile')
     
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True)
-    subcategory = models.ForeignKey(SubCategory, on_delete=models.SET_NULL, null=True)
+    subcategory = models.ForeignKey(SubCategory, on_delete=models.SET_NULL, null=True, blank=True)
+    subcategories = models.ManyToManyField(SubCategory, related_name='expert_profiles', blank=True)
+    
     qualification = models.CharField(max_length=255)
     experience_years = models.PositiveIntegerField(default=0)
     
@@ -55,7 +57,6 @@ class ExpertProfile(models.Model):
     
     created_at = models.DateTimeField(auto_now_add=True)
 
-
     @property
     def average_rating(self):
         result = self.reviews.aggregate(avg=Avg('rating'))['avg']
@@ -64,7 +65,6 @@ class ExpertProfile(models.Model):
     @property
     def total_reviews_count(self):
         return self.reviews.count()
-
 
     def __str__(self):
         return f"ExpertProfile: {self.user.get_full_name() or self.user.username}"

@@ -1,35 +1,39 @@
-from django.shortcuts import render, redirect
 from django.contrib import messages
-from django.contrib.auth import get_user_model, login, logout, authenticate
 from django.contrib.auth.decorators import login_required
+from .forms import UserRegistrationForm, ExpertStep1Form, ExpertStep2Form, LoginForm
+from .models import CustomUser, UserRole, ExpertProfile
 from django.shortcuts import render, redirect, get_object_or_404
+from django.db import transaction
+from apps.categories.models import Category, SubCategory
+from apps.locations.models import State, District, City
+from django.contrib.auth import get_user_model, login, logout, authenticate
 from .forms import (
     UserRegistrationForm,
     ExpertStep1Form,
     ExpertStep2Form,
-    ExpertProfileUpdateForm,  # <--- Add this import
+    ExpertProfileUpdateForm,
+    LoginForm,
 )
-
-
-# At the top of apps/accounts/views.py
-from .models import CustomUser, UserRole, ExpertProfile
-
-# Imports from forms and models
-from .forms import UserRegistrationForm, ExpertStep1Form, ExpertStep2Form, LoginForm
-from .models import UserRole, ExpertProfile
-
-# ==========================================
+# ===================================================
 # HELPER: ROLE-BASED ACCESS CONTROL REDIRECT
-# ==========================================
+# ===================================================
 def redirect_by_role(user):
-    if user.role == UserRole.EXPERT:
-        return redirect('accounts:expert_dashboard')
-    return redirect('accounts:user_dashboard')
+    # Check string or choice enum match
+    if getattr(user, 'role', None) == UserRole.EXPERT or getattr(user, 'role', None) == 'EXPERT':
+        return redirect('accounts:expert_dashboard')  # Or 'accounts:expert_dashboard'
+    return redirect('accounts:user_dashboard')          # Or 'accounts:user_dashboard'
 
 
-# ==========================================
-# USER REGISTRATION VIEW
-# ==========================================
+def home(request):
+    # If the user is already logged in, redirect them to their respective dashboard
+    if request.user.is_authenticated:
+        return redirect_by_role(request.user)
+
+    # If guest/anonymous user, render the landing page from templates/home.html
+    return render(request, 'home.html')
+
+
+
 User = get_user_model()
 
 # ==========================================
@@ -100,6 +104,15 @@ def expert_register_step1(request):
     return render(request, 'accounts/expert_step1.html', {'form': form})
 
 
+
+
+    
+
+
+
+
+
+
 # ==========================================
 # EXPERT REGISTRATION - STEP 2 VIEW
 # ==========================================
@@ -111,7 +124,6 @@ def expert_register_step2(request):
 
     if request.method == 'POST':
         form = ExpertStep2Form(request.POST)
-        print(form)
         if form.is_valid():
             cleaned = form.cleaned_data
             
@@ -121,10 +133,14 @@ def expert_register_step2(request):
                     return obj.id
                 return obj if obj else None
 
+            # 1. Safely extract the QuerySet into a list of IDs for JSON serialization
+            subcategories_qs = cleaned.get('subcategory')
+            subcategory_ids_list = list(subcategories_qs.values_list('id', flat=True)) if subcategories_qs else []
+
             # Store step 2 data safely
             request.session['expert_wizard_step2'] = {
                 'category_id': get_id(cleaned.get('category')),
-                'subcategory_id': get_id(cleaned.get('subcategory')),
+                'subcategory_id': subcategory_ids_list,  # <--- FIXED: Now stores a list of IDs safely
                 'qualification': cleaned.get('qualification', ''),
                 'experience_years': cleaned.get('experience_years', 0),
                 'hourly_rate': str(cleaned.get('hourly_rate', 0)),
@@ -140,27 +156,29 @@ def expert_register_step2(request):
         else:
             messages.error(request, "Please correct the errors in Step 2 below.")
     else:
-        initial_data = request.session.get('expert_wizard_step2', {})
+        # Map stored session _id keys back to actual form fields so the "Back" button works perfectly
+        session_data = request.session.get('expert_wizard_step2', {})
+        initial_data = {
+            'category': session_data.get('category_id'),
+            'subcategory': session_data.get('subcategory_id', []),
+            'state': session_data.get('state_id'),
+            'district': session_data.get('district_id'),
+            'city': session_data.get('city_id'),
+            'qualification': session_data.get('qualification', ''),
+            'experience_years': session_data.get('experience_years', ''),
+            'hourly_rate': session_data.get('hourly_rate', ''),
+            'bio': session_data.get('bio', ''),
+        }
         form = ExpertStep2Form(initial=initial_data)
 
     return render(request, 'accounts/expert_step2.html', {'form': form})
 
-
-    
-# Step 3: Summary Preview & Atomic Commit
-from django.shortcuts import render, redirect
-from django.contrib import messages
-from django.contrib.auth import get_user_model, login
-from django.db import transaction
-
-# Model imports
-from .models import UserRole, ExpertProfile
-from apps.categories.models import Category, SubCategory
-from apps.locations.models import State, District, City
-
 User = get_user_model()
 
 
+# ==========================================
+# EXPERT REGISTRATION - STEP 3 VIEW
+# ==========================================
 def expert_register_step3(request):
     step1 = request.session.get('expert_wizard_step1')
     step2 = request.session.get('expert_wizard_step2')
@@ -172,10 +190,11 @@ def expert_register_step3(request):
 
     # 2. Build context safely with database lookups
     try:
+        subcategory_ids = step2.get('subcategory_id', [])
         context = {
             'step1': step1,
             'category': Category.objects.filter(id=step2.get('category_id')).first(),
-            'subcategory': SubCategory.objects.filter(id=step2.get('subcategory_id')).first(),
+            'subcategories': SubCategory.objects.filter(id__in=subcategory_ids), # <--- FIXED: Fetches multiple
             'qualification': step2.get('qualification', ''),
             'experience_years': step2.get('experience_years', 0),
             'state': State.objects.filter(id=step2.get('state_id')).first(),
@@ -204,10 +223,10 @@ def expert_register_step3(request):
                 )
 
                 # Step B: Create Expert Profile
-                ExpertProfile.objects.create(
+                expert_profile = ExpertProfile.objects.create(
                     user=user,
                     category_id=step2.get('category_id'),
-                    subcategory_id=step2.get('subcategory_id'),
+                    # subcategory_id omitted here because ManyToMany fields must be set after creation
                     qualification=step2.get('qualification'),
                     experience_years=step2.get('experience_years', 0),
                     state_id=step2.get('state_id'),
@@ -216,6 +235,10 @@ def expert_register_step3(request):
                     hourly_rate=step2.get('hourly_rate', 0),
                     bio=step2.get('bio', '')
                 )
+
+                # Step B.2: Safely attach the multiple subcategories
+                if subcategory_ids:
+                    expert_profile.subcategories.set(subcategory_ids)
 
                 # Step C: Clean up session keys
                 request.session.pop('expert_wizard_step1', None)
@@ -275,7 +298,7 @@ def logout_view(request):
 
 
 # ==========================================
-# DASHBOARD PLACEHOLDERS (Phase 3 will populate)
+# DASHBOARD PLACEHOLDERS 
 # ==========================================
 @login_required
 def user_dashboard_view(request):
@@ -308,10 +331,13 @@ def edit_expert_profile_view(request):
             form.save()
             messages.success(request, f"Your consultation fee has been updated to ₹{expert_profile.hourly_rate}/hr!")
             return redirect('bookings:schedule_manager')
+        else:
+            messages.error(request, "Please fix the validation errors below.")
     else:
         form = ExpertProfileUpdateForm(instance=expert_profile)
 
     return render(request, 'accounts/edit_expert_profile.html', {
         'form': form,
-        'expert': expert_profile
+        'expert': expert_profile,
+        'expert_profile': expert_profile
     })

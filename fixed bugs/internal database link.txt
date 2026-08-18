@@ -1,0 +1,1 @@
+postgresql://adwise_db_z9la_user:3NVmV3ile4HPSKKgQgnpthC1ccnqP3lm@dpg-d9rjo6f10e5c7388bjo0-a/adwise_db_z9la

@@ -377,10 +377,9 @@ class ExpertStep2Form(forms.Form):
         empty_label="Select Category",
         widget=forms.Select(attrs={'class': 'form-select', 'id': 'id_category'})
     )
-    subcategory = forms.ModelChoiceField(
+    subcategory = forms.ModelMultipleChoiceField(
         queryset=SubCategory.objects.none(),  # Default to empty until Category is chosen
-        empty_label="Select Subcategory",
-        widget=forms.Select(attrs={'class': 'form-select', 'id': 'id_subcategory'})
+        widget=forms.SelectMultiple(attrs={'class': 'form-select', 'id': 'id_subcategory'})
     )
     qualification = forms.CharField(
         max_length=100,
@@ -399,19 +398,17 @@ class ExpertStep2Form(forms.Form):
             'id': 'id_experience_years'
         })
     )
-    hourly_rate = forms.DecimalField(
-    min_value=Decimal('100.00'),
-    max_value=Decimal('50000.00'),
-    decimal_places=2,
-    max_digits=8,
-    widget=forms.NumberInput(attrs={
-        'class': 'form-control', 
-        'step': '0.01',
-        'min': '100',
-        'max': '50000',
-        'placeholder': 'e.g. 500.00',
-        'id': 'id_hourly_rate'
-    })
+    hourly_rate = forms.IntegerField(
+        min_value=100,
+        max_value=50000,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control', 
+            'step': '1',
+            'min': '100',
+            'max': '50000',
+            'placeholder': 'e.g. 1500',
+            'id': 'id_hourly_rate'
+        })
     )
     state = forms.ModelChoiceField(
         queryset=State.objects.all(),
@@ -528,27 +525,36 @@ class LoginForm(forms.Form):
 
 
 class ExpertProfileUpdateForm(forms.ModelForm):
+    hourly_rate = forms.IntegerField(
+        min_value=100,
+        max_value=50000,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'step': '1', 'id': 'id_hourly_rate'})
+    )
+
     class Meta:
         model = ExpertProfile
         fields = [
-            'category', 
-            'subcategory', 
             'qualification', 
             'experience_years', 
             'hourly_rate', 
-            'state', 
-            'district', 
-            'city', 
             'bio'
         ]
         widgets = {
-            'category': forms.Select(attrs={'class': 'form-select'}),
-            'subcategory': forms.Select(attrs={'class': 'form-select'}),
-            'qualification': forms.TextInput(attrs={'class': 'form-control'}),
-            'experience_years': forms.NumberInput(attrs={'class': 'form-control'}),
-            'hourly_rate': forms.NumberInput(attrs={'class': 'form-control'}),
-            'state': forms.Select(attrs={'class': 'form-select', 'id': 'id_state'}),
-            'district': forms.Select(attrs={'class': 'form-select', 'id': 'id_district'}),
-            'city': forms.Select(attrs={'class': 'form-select', 'id': 'id_city'}),
-            'bio': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
+            'qualification': forms.TextInput(attrs={'class': 'form-control', 'id': 'id_qualification'}),
+            'experience_years': forms.NumberInput(attrs={'class': 'form-control', 'id': 'id_experience_years'}),
+            'bio': forms.Textarea(attrs={'class': 'form-control', 'rows': 4, 'id': 'id_bio'}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Convert decimal hourly rate to integer for clean rendering without .00
+        if self.instance and self.instance.hourly_rate:
+            self.initial['hourly_rate'] = int(self.instance.hourly_rate)
+
+    def clean_bio(self):
+        bio = self.cleaned_data.get('bio', '').strip()
+        if not bio:
+            raise forms.ValidationError("Professional bio is required.")
+        if len(bio) < 50:
+            raise forms.ValidationError("Bio must be at least 50 characters long.")
+        return bio

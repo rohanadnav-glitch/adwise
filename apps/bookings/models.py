@@ -82,6 +82,11 @@ class SessionBooking(models.Model):
         default=SessionStatus.REQUESTED,
         db_index=True
     )
+    
+    # NEW FIELDS: Topic & Note
+    title = models.CharField(max_length=200, blank=True, null=True)
+    description = models.TextField(blank=True, null=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     payment_deadline = models.DateTimeField(null=True, blank=True)
 
@@ -90,46 +95,9 @@ class SessionBooking(models.Model):
     proposed_start_time = models.TimeField(null=True, blank=True)
     proposed_end_time = models.TimeField(null=True, blank=True)
     meeting_link = models.URLField(max_length=500, blank=True, null=True)
+
     class Meta:
         ordering = ['-created_at']
-
-    def set_payment_deadline(self):
-        """ Calculates a 24-hour window from acceptance """
-        self.payment_deadline = timezone.now() + timedelta(hours=24)
-
-    def is_payment_expired(self):
-        if self.status == SessionStatus.ACCEPTED and self.payment_deadline:
-            return timezone.now() > self.payment_deadline
-        return False
-
-
-
-
-
-
-    def generate_meeting_link(self):
-        """Generate a unique, hard-to-guess Jitsi Meet room link."""
-
-        unique_room_id = (
-            f"Adwise-Consultation-{self.id}-"
-            f"{uuid.uuid4().hex[:10]}"
-        )
-
-        self.meeting_link = (
-            f"https://meet.jit.si/{unique_room_id}"
-        )
-
-        self.save(update_fields=['meeting_link'])
-
-        return self.meeting_link
-
-
-
-
-    def __str__(self):
-        return f"Booking #{self.id}: {self.user.username} -> {self.expert.user.username} ({self.get_status_display()})"
-
-    
    
 
 class Notification(models.Model):

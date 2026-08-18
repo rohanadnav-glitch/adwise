@@ -3,7 +3,7 @@
 {% block title %}Edit Consultation Rates & Profile - Adwise{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
+<div class="row justify-content-center py-4">
     <div class="col-md-7">
         <div class="card shadow-sm border-0 p-4">
             <div class="d-flex justify-content-between align-items-center mb-3">
@@ -15,6 +15,19 @@
 
             <form method="POST">
                 {% csrf_token %}
+
+                {% if form.errors %}
+                <div class="alert alert-danger py-2 mb-3">
+                    <strong class="d-block mb-1">Please correct the following errors:</strong>
+                    <ul class="mb-0 ps-3 small">
+                        {% for field, errors in form.errors.items %}
+                            {% for error in errors %}
+                                <li><strong>{{ field|capfirst }}:</strong> {{ error }}</li>
+                            {% endfor %}
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
                 
                 <!-- Consultation Fee Field -->
                 <div class="card bg-light border-primary border-opacity-25 p-3 mb-4">
@@ -22,22 +35,34 @@
                         <i class="fa-solid fa-indian-rupee-sign me-1"></i> Hourly Consultation Fee (₹)
                     </label>
                     {{ form.hourly_rate }}
-                    <small class="text-muted mt-1">This rate will apply to all newly requested consultation slots.</small>
+                    {% if form.hourly_rate.errors %}
+                    <div class="text-danger small mt-1">{{ form.hourly_rate.errors|striptags }}</div>
+                    {% endif %}
+                    <small class="text-muted mt-1">This rate will apply to all newly requested consultation slots (enter whole Rupee amounts).</small>
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Highest Qualification</label>
                     {{ form.qualification }}
+                    {% if form.qualification.errors %}
+                    <div class="text-danger small mt-1">{{ form.qualification.errors|striptags }}</div>
+                    {% endif %}
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Years of Experience</label>
                     {{ form.experience_years }}
+                    {% if form.experience_years.errors %}
+                    <div class="text-danger small mt-1">{{ form.experience_years.errors|striptags }}</div>
+                    {% endif %}
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Professional Bio</label>
                     {{ form.bio }}
+                    {% if form.bio.errors %}
+                    <div class="text-danger small mt-1">{{ form.bio.errors|striptags }}</div>
+                    {% endif %}
                 </div>
 
                 <div class="d-grid mt-4">
