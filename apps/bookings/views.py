@@ -32,6 +32,18 @@ def create_notification(user, title, message):
 # ==========================================
 
 
+
+
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.utils import timezone
+from django.db.models import Q
+from datetime import datetime, date, timedelta
+from apps.accounts.models import UserRole, ExpertProfile
+from .models import ExpertAvailability
+
+
 @login_required
 def schedule_manager_view(request):
     """ Allows experts to set availability via explicit Start Time & End Time with flexible minute-chunking """
@@ -61,7 +73,7 @@ def schedule_manager_view(request):
                     messages.error(request, "End time must be strictly after start time.")
                     return redirect('bookings:schedule_manager')
 
-                # Past date/time checks
+                # Past date/time checks & target parsing
                 if slot_type == 'one_time' and specific_date_str:
                     target_date = datetime.strptime(specific_date_str, '%Y-%m-%d').date()
                     if target_date < today:
@@ -71,74 +83,73 @@ def schedule_manager_view(request):
                     if target_date == today and start_time <= now.time():
                         messages.error(request, "You cannot add availability slots for a past time today.")
                         return redirect('bookings:schedule_manager')
+                    target_dow = None
                 else:
                     target_date = None
+                    target_dow = int(day_of_week) if day_of_week is not None and day_of_week != '' else None
 
                 dummy_date = target_date if target_date else today
                 current_start_dt = datetime.combine(dummy_date, start_time)
                 total_end_dt = datetime.combine(dummy_date, end_time)
 
                 is_rec = (slot_type == 'recurring')
-                target_dow = int(day_of_week) if is_rec and day_of_week is not None else None
 
                 created_count = 0
+                skipped_count = 0
 
-                # Option A: Create a single slot with the exact start and end time
+                # Determine the intervals to check/create
+                intervals = []
                 if chunk_minutes == 'none':
-                    existing_slot = ExpertAvailability.objects.filter(
-                        expert=expert_profile,
-                        is_recurring=is_rec,
-                        day_of_week=target_dow,
-                        date=target_date,
-                        start_time=current_start_dt.time(),
-                        end_time=total_end_dt.time()
-                    ).exists()
+                    intervals.append((current_start_dt.time(), total_end_dt.time()))
+                else:
+                    step = int(chunk_minutes)
+                    temp_start = current_start_dt
+                    while temp_start + timedelta(minutes=step) <= total_end_dt:
+                        temp_end = temp_start + timedelta(minutes=step)
+                        intervals.append((temp_start.time(), temp_end.time()))
+                        temp_start = temp_end
 
-                    if not existing_slot:
+                # Process each interval safely checking ONLY for exact matching duplicate slots
+                for s_time, e_time in intervals:
+                    slot_query = Q(expert=expert_profile, is_recurring=is_rec)
+                    
+                    if target_date:
+                        slot_query &= Q(date=target_date)
+                    else:
+                        slot_query &= Q(date__isnull=True)
+
+                    if target_dow is not None:
+                        slot_query &= Q(day_of_week=target_dow)
+                    else:
+                        slot_query &= Q(day_of_week__isnull=True)
+
+                    # Check for an EXACT duplicate slot match (same start and end time)
+                    slot_query &= Q(start_time=s_time, end_time=e_time)
+
+                    overlapping_slots = ExpertAvailability.objects.filter(slot_query)
+
+                    if not overlapping_slots.exists():
                         ExpertAvailability.objects.create(
                             expert=expert_profile,
                             is_recurring=is_rec,
                             day_of_week=target_dow,
                             date=target_date,
-                            start_time=current_start_dt.time(),
-                            end_time=total_end_dt.time(),
+                            start_time=s_time,
+                            end_time=e_time,
                             is_booked=False
                         )
                         created_count += 1
+                    else:
+                        skipped_count += 1
 
-                # Option B: Divide the time range into custom minute chunks (30, 45, 60 mins)
-                else:
-                    step = int(chunk_minutes)
-                    while current_start_dt + timedelta(minutes=step) <= total_end_dt:
-                        next_end_dt = current_start_dt + timedelta(minutes=step)
-
-                        existing_slot = ExpertAvailability.objects.filter(
-                            expert=expert_profile,
-                            is_recurring=is_rec,
-                            day_of_week=target_dow,
-                            date=target_date,
-                            start_time=current_start_dt.time(),
-                            end_time=next_end_dt.time()
-                        ).exists()
-
-                        if not existing_slot:
-                            ExpertAvailability.objects.create(
-                                expert=expert_profile,
-                                is_recurring=is_rec,
-                                day_of_week=target_dow,
-                                date=target_date,
-                                start_time=current_start_dt.time(),
-                                end_time=next_end_dt.time(),
-                                is_booked=False
-                            )
-                            created_count += 1
-
-                        current_start_dt = next_end_dt
-
+                # Feedback messages
                 if created_count > 0:
-                    messages.success(request, f"{created_count} availability slot(s) created successfully!")
+                    msg = f"{created_count} availability slot(s) created successfully!"
+                    if skipped_count > 0:
+                        msg += f" ({skipped_count} duplicate slot(s) were skipped.)"
+                    messages.success(request, msg)
                 else:
-                    messages.warning(request, "Selected time slot(s) already exist.")
+                    messages.info(request, "Selected time slot(s) already exist on your schedule.")
 
                 return redirect('bookings:schedule_manager')
             except ValueError:
@@ -150,7 +161,6 @@ def schedule_manager_view(request):
         'expert_profile': expert_profile,
     }
     return render(request, 'bookings/schedule_manager.html', context)
-
 
 @login_required
 def delete_slot_view(request, slot_id):
@@ -883,4 +893,10 @@ def submit_review_view(request, booking_id):
 
 def get_subcategories_api(request):
     category_id = request.GET.get('category_id')
+    subcategories = []
+    
+    if category_id and category_id.isdigit():
+        from apps.categories.models import Subcategory
+        subcategories = Subcategory.objects.filter(category_id=category_id).values('id', 'name')
+        
     return JsonResponse({'subcategories': list(subcategories)})

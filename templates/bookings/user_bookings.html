@@ -1,8 +1,4 @@
-{% extends 'base.html' %}
-
-{% block title %}My Consultation Bookings - Adwise{% endblock %}
-
-{% block content %}
+{% extends 'base.html' %} {% block title %}My Consultation Bookings - Adwise{% endblock %} {% block content %}
 <div class="card shadow-sm border-0 p-4">
     <h3 class="fw-bold mb-3"><i class="fa-solid fa-calendar-check text-primary me-2"></i>My Consultation Bookings</h3>
     {% if bookings %}
@@ -26,104 +22,61 @@
                     <td>
                         {% if b.status == 'POSTPONED' %}
                         <span class="text-decoration-line-through text-muted">Original Time</span><br>
-                        <strong class="text-warning">Proposed: {{ b.proposed_date|date:"D, d M Y" }} ({{
-                            b.proposed_start_time|time:"h:i A" }} - {{ b.proposed_end_time|time:"h:i A" }})</strong>
-                        {% else %}
-                        <!-- Uses proposed_date to safely render both one-time and recurring dates -->
+                        <strong class="text-warning">Proposed: {{ b.proposed_date|date:"D, d M Y" }} ({{ b.proposed_start_time|time:"h:i A" }} - {{ b.proposed_end_time|time:"h:i A" }})</strong> {% else %}
                         <strong class="text-dark">{{ b.proposed_date|default:b.slot.date|date:"D, d M Y" }}</strong><br>
-                        <small class="text-muted">{{ b.slot.start_time|time:"h:i A" }} - {{ b.slot.end_time|time:"h:i A"}}</small>
-                        {% endif %}
+                        <small class="text-muted">{{ b.slot.start_time|time:"h:i A" }} - {{ b.slot.end_time|time:"h:i A"}}</small> {% endif %}
                     </td>
 
                     <!-- STATUS COLUMN -->
                     <td>
-                        {% if b.status == 'REQUESTED' %}
-                        {% if b.is_past %}
-                        <span class="badge bg-secondary">Expired (Time Passed)</span>
-                        {% else %}
-                        <span class="badge bg-warning text-dark">Pending Expert Review</span>
-                        {% endif %}
-
-                        {% elif b.status == 'ACCEPTED' %}
-                        {% if b.is_past %}
-                        <span class="badge bg-secondary">Expired (Time Passed)</span>
-                        {% else %}
-                        <span class="badge bg-primary">Accepted (Payment Required)</span>
-                        {% endif %}
-
-                        {% elif b.status == 'CONFIRMED' %}
-                        {% if b.is_past %}
-                        <span class="badge bg-dark">Completed</span>
-                        {% else %}
-                        <span class="badge bg-success">Confirmed & Paid</span>
-                        {% endif %}
-
-                        {% elif b.status == 'POSTPONED' %}
-                        {% if b.is_past %}
-                        <span class="badge bg-secondary">Expired (Time Passed)</span>
-                        {% else %}
-                        <span class="badge bg-info text-dark">New Time Proposed</span>
-                        {% endif %}
-
-                        {% elif b.status == 'REJECTED' %}
-                        <span class="badge bg-danger">Rejected</span>
-                        {% elif b.status == 'EXPIRED' %}
-                        <span class="badge bg-secondary">Expired</span>
-                        {% endif %}
+                        {% if b.status == 'REQUESTED' %} {% if b.is_past %}
+                        <span class="badge bg-secondary">Expired (Time Passed)</span> {% else %}
+                        <span class="badge bg-warning text-dark">Pending Expert Review</span> {% endif %} {% elif b.status == 'ACCEPTED' %} {% if b.is_past %}
+                        <span class="badge bg-secondary">Expired (Time Passed)</span> {% else %}
+                        <span class="badge bg-primary">Accepted (Payment Required)</span> {% endif %} {% elif b.status == 'CONFIRMED' %} {% if b.is_past %}
+                        <span class="badge bg-dark">Completed</span> {% else %}
+                        <span class="badge bg-success">Confirmed & Paid</span> {% endif %} {% elif b.status == 'POSTPONED' %} {% if b.is_past %}
+                        <span class="badge bg-secondary">Expired (Time Passed)</span> {% else %}
+                        <span class="badge bg-info text-dark">New Time Proposed</span> {% endif %} {% elif b.status == 'REJECTED' %}
+                        <span class="badge bg-danger">Rejected</span> {% elif b.status == 'EXPIRED' %}
+                        <span class="badge bg-secondary">Expired</span> {% endif %}
                     </td>
 
                     <!-- ACTION / PAYMENT COLUMN -->
                     <td>
                         {% if b.is_past and b.status != 'CONFIRMED' %}
-                        <span class="text-muted fs-7">N/A</span>
-
-                        {% elif b.status == 'ACCEPTED' %}
-                        <a href="{% url 'bookings:process_payment' b.id %}" class="btn btn-success btn-sm fw-bold">Pay
-                            ₹{{ b.expert.hourly_rate|floatformat:0 }} Now</a><br>
-                        <small class="text-danger">Expires in 24h</small>
-
-                        {% elif b.status == 'POSTPONED' %}
-                        <a href="{% url 'bookings:respond_postpone' b.id 'accept' %}"
-                            class="btn btn-success btn-sm fw-bold">Accept New Time</a>
-                        <a href="{% url 'bookings:respond_postpone' b.id 'decline' %}"
-                            class="btn btn-outline-danger btn-sm ms-1">Decline</a>
-
-                        {% elif b.status == 'CONFIRMED' %}
-
-                        <!-- ONLY show the Join button if the session is NOT in the past -->
-                        {% if not b.is_past %}
-                        {% if b.meeting_link %}
-                        <a href="{{ b.meeting_link }}" target="_blank" class="btn btn-primary btn-sm fw-bold shadow-sm">
-                            <i class="fa-solid fa-video me-1"></i> Join Video Session
-                        </a>
-                        {% else %}
-                        <a href="https://meet.jit.si/Adwise-Consultation-{{ b.id }}" target="_blank"
-                            class="btn btn-primary btn-sm fw-bold shadow-sm">
-                            <i class="fa-solid fa-video me-1"></i> Join Video Session
-                        </a>
-                        {% endif %}
-                        {% endif %}
-
-                        <!-- Review Button (Unlocked ONLY after session) -->
-                        {% if b.is_past %}
-                        {% if b.review %}
+                        <span class="text-muted fs-7">N/A</span> {% elif b.status == 'ACCEPTED' %}
+                        <a href="{% url 'bookings:process_payment' b.id %}" class="btn btn-success btn-sm fw-bold">Pay ₹{{ b.expert.hourly_rate|floatformat:0 }} Now</a><br>
+                        <small class="text-danger">Expires in 24h</small> {% elif b.status == 'POSTPONED' %}
+                        <a href="{% url 'bookings:respond_postpone' b.id 'accept' %}" class="btn btn-success btn-sm fw-bold">Accept New Time</a>
+                        <a href="{% url 'bookings:respond_postpone' b.id 'decline' %}" class="btn btn-outline-danger btn-sm ms-1">Decline</a> {% elif b.status == 'CONFIRMED' %} {% if b.is_past %}
+                        <span class="text-muted small fw-bold">Session Completed</span> {% if b.review %}
                         <span class="badge bg-light text-dark border mt-2 d-block w-75 text-center">
-                            <i class="fa-solid fa-star text-warning me-1"></i>Rated {{ b.review.rating }}/5
-                        </span>
-                        {% else %}
-                        <a href="{% url 'bookings:submit_review' b.id %}"
-                            class="btn btn-outline-warning btn-sm fw-bold mt-2 d-block w-75">
+                                    <i class="fa-solid fa-star text-warning me-1"></i>Rated {{ b.review.rating }}/5
+                                </span> {% else %}
+                        <a href="{% url 'bookings:submit_review' b.id %}" class="btn btn-outline-warning btn-sm fw-bold mt-2 d-block w-75">
                             <i class="fa-regular fa-star me-1"></i> Rate Expert
                         </a>
-                        {% endif %}
-                        {% else %}
-                        <span class="text-muted small d-block mt-2" style="font-size: 0.75rem;">Review unlocks after
-                            session</span>
-                        {% endif %}
+                        {% endif %} {% else %}
+                        <div class="d-flex flex-column gap-1 align-items-start session-action-block" data-start-time="{% if b.proposed_date %}{{ b.proposed_date|date:'Y-m-d' }}{% else %}{{ b.slot.date|date:'Y-m-d' }}{% endif %}T{% if b.proposed_start_time %}{{ b.proposed_start_time|time:'H:i:s' }}{% else %}{{ b.slot.start_time|time:'H:i:s' }}{% endif %}"
+                            data-end-time="{% if b.proposed_date %}{{ b.proposed_date|date:'Y-m-d' }}{% else %}{{ b.slot.date|date:'Y-m-d' }}{% endif %}T{% if b.proposed_end_time %}{{ b.proposed_end_time|time:'H:i:s' }}{% else %}{{ b.slot.end_time|time:'H:i:s' }}{% endif %}">
 
-                        {% else %}
-                        <span class="text-muted fs-7">N/A</span>
-                        {% endif %}
+                            {% if b.meeting_link %}
+                            <a href="{{ b.meeting_link }}" target="_blank" class="btn btn-primary btn-sm fw-bold shadow-sm video-join-btn disabled" aria-disabled="true" style="pointer-events: none; opacity: 0.65;">
+                                <i class="fa-solid fa-video me-1"></i> Join Video Session
+                            </a>
+                            {% else %}
+                            <a href="https://meet.jit.si/Adwise-Consultation-{{ b.id }}" target="_blank" class="btn btn-primary btn-sm fw-bold shadow-sm video-join-btn disabled" aria-disabled="true" style="pointer-events: none; opacity: 0.65;">
+                                <i class="fa-solid fa-video me-1"></i> Join Video Session
+                            </a>
+                            {% endif %}
+
+                            <small class="text-danger fw-bold countdown-text">
+                                        Calculating...
+                                    </small>
+                        </div>
+                        <span class="text-muted small d-block mt-2" style="font-size: 0.75rem;"></span> {% endif %} {% else %}
+                        <span class="text-muted fs-7">N/A</span> {% endif %}
                     </td>
                 </tr>
                 {% endfor %}
@@ -131,8 +84,61 @@
         </table>
     </div>
     {% else %}
-    <p class="text-muted m-0">You haven't requested any consultation sessions yet. <a
-            href="{% url 'bookings:search_experts' %}">Search for experts here</a>.</p>
+    <p class="text-muted m-0">You haven't requested any consultation sessions yet. <a href="{% url 'bookings:search_experts' %}">Search for experts here</a>.</p>
     {% endif %}
 </div>
+
+<!-- Live Countdown & Button Enable/Disable Script -->
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const sessionBlocks = document.querySelectorAll('.session-action-block');
+
+        function updateSessions() {
+            const now = new Date().getTime();
+
+            sessionBlocks.forEach(block => {
+                const startTimeStr = block.getAttribute('data-start-time');
+                const endTimeStr = block.getAttribute('data-end-time');
+
+                const startTime = new Date(startTimeStr).getTime();
+                const endTime = new Date(endTimeStr).getTime();
+
+                const joinBtn = block.querySelector('.video-join-btn');
+                const countdownEl = block.querySelector('.countdown-text');
+
+                if (!joinBtn || !countdownEl) return;
+
+                if (now >= startTime && now <= endTime) {
+                    joinBtn.classList.remove('disabled');
+                    joinBtn.style.pointerEvents = 'auto';
+                    joinBtn.style.opacity = '1';
+                    countdownEl.textContent = "Session is live now!";
+                } else if (now > endTime) {
+                    joinBtn.classList.add('disabled');
+                    joinBtn.style.pointerEvents = 'none';
+                    joinBtn.style.opacity = '0.65';
+                    countdownEl.textContent = "Session time passed";
+                } else {
+                    joinBtn.classList.add('disabled');
+                    joinBtn.style.pointerEvents = 'none';
+                    joinBtn.style.opacity = '0.65';
+
+                    const difference = startTime - now;
+                    const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+                    const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
+
+                    let timerText = "";
+                    if (days > 0) timerText += `${days}d `;
+                    timerText += `${String(hours).padStart(2, '0')}h ${String(minutes).padStart(2, '0')}m`;
+
+                    countdownEl.textContent = `Starts in ${timerText}`;
+                }
+            });
+        }
+
+        updateSessions();
+        setInterval(updateSessions, 10000);
+    });
+</script>
 {% endblock %}

@@ -1,8 +1,4 @@
-{% extends 'base.html' %}
-
-{% block title %}Schedule Availability - Adwise{% endblock %}
-
-{% block content %}
+{% extends 'base.html' %} {% block title %}Schedule Availability - Adwise{% endblock %} {% block content %}
 <!-- FullCalendar Stylesheet -->
 <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css" rel="stylesheet" />
 
@@ -43,7 +39,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Interactive Calendar Card -->
     <div class="card shadow-sm border-0 p-3">
         <div id="calendar"></div>
@@ -65,7 +61,7 @@
                     <!-- Selected Date Display -->
                     <div class="mb-3">
                         <label class="form-label fw-semibold text-secondary small">Selected Date</label>
-                        <input type="date" name="date" id="modal_date_input" class="form-control" required readonly>
+                        <input type="date" name="date" id="modal_date_input" class="form-control" required>
                     </div>
 
                     <!-- Recurrence Option -->
@@ -73,15 +69,12 @@
                         <label class="form-label fw-semibold text-secondary small">Recurrence Option</label>
                         <div class="d-flex gap-3">
                             <div class="form-check">
-                                <input class="form-check-input" type="radio" name="slot_type" id="modal_type_once"
-                                    value="one_time" checked>
+                                <input class="form-check-input" type="radio" name="slot_type" id="modal_type_once" value="one_time" checked>
                                 <label class="form-check-label small" for="modal_type_once">Only for this date</label>
                             </div>
                             <div class="form-check">
-                                <input class="form-check-input" type="radio" name="slot_type" id="modal_type_recurring"
-                                    value="recurring">
-                                <label class="form-check-label small" for="modal_type_recurring"
-                                    id="modal_recurring_label">Every Week on this day</label>
+                                <input class="form-check-input" type="radio" name="slot_type" id="modal_type_recurring" value="recurring">
+                                <label class="form-check-label small" for="modal_type_recurring" id="modal_recurring_label">Every Week on this day</label>
                             </div>
                         </div>
                         <input type="hidden" name="day_of_week" id="modal_day_of_week_input">
@@ -115,8 +108,7 @@
 
                 </div>
                 <div class="modal-footer border-top bg-light">
-                    <button type="button" class="btn btn-outline-secondary btn-sm"
-                        data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-primary btn-sm px-4 fw-bold">Add Availability</button>
                 </div>
             </form>
@@ -160,8 +152,7 @@
                 <div class="mb-2 d-none" id="meeting_link_container">
                     <label class="text-muted small fw-semibold text-uppercase">Meeting Room</label>
                     <div>
-                        <a href="#" id="detail_meeting_link" target="_blank"
-                            class="btn btn-primary btn-sm w-100 fw-bold">
+                        <a href="#" id="detail_meeting_link" target="_blank" class="btn btn-primary btn-sm w-100 fw-bold">
                             <i class="fa-solid fa-video me-1"></i> Join Video Consultation
                         </a>
                     </div>
@@ -192,7 +183,7 @@
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
+    document.addEventListener('DOMContentLoaded', function() {
         const calendarEl = document.getElementById('calendar');
         const addModal = new bootstrap.Modal(document.getElementById('addSlotModal'));
 
@@ -203,28 +194,25 @@
                 center: 'title',
                 right: 'timeGridWeek,dayGridMonth'
             },
-            allDaySlot: false,        // Hides the empty all-day row completely
-            slotDuration: '00:30:00', // Allows selecting 30-minute grids
-            slotMinTime: '06:00:00',  // Calendar starts display at 6 AM
-            slotMaxTime: '23:00:00',  // Calendar ends display at 11 PM
+            allDaySlot: false,
+            slotDuration: '00:30:00',
+            slotMinTime: '06:00:00',
+            slotMaxTime: '23:00:00',
             selectable: true,
             selectMirror: true,
             editable: false,
             dayMaxEvents: true,
             events: "{% url 'bookings:get_expert_calendar_events_api' %}",
-            
-            // Prevent selecting past dates
-            selectAllow: function (selectInfo) {
+
+            selectAllow: function(selectInfo) {
                 const now = new Date();
                 now.setHours(0, 0, 0, 0);
                 return selectInfo.start >= now;
             },
 
-            // Drag/click time selection to auto-fill Start & End times
-            select: function (info) {
+            select: function(info) {
                 const selectedDate = info.startStr.split('T')[0];
 
-                // Extract HH:MM start and end times
                 let startTime = info.startStr.split('T')[1] ? info.startStr.split('T')[1].substring(0, 5) : "09:00";
                 let endTime = info.endStr.split('T')[1] ? info.endStr.split('T')[1].substring(0, 5) : "10:00";
 
@@ -239,14 +227,15 @@
                 document.getElementById('modal_day_of_week_input').value = djangoDayIndex;
                 document.getElementById('modal_recurring_label').textContent = `Every ${dayName}`;
 
+                // Reset back to one-time default on fresh selection
+                document.getElementById('modal_type_once').checked = true;
+
                 addModal.show();
             },
 
-            // Click an existing event on calendar
-            eventClick: function (info) {
+            eventClick: function(info) {
                 const props = info.event.extendedProps;
 
-                // IF CLICKED A BOOKED / REQUESTED SESSION
                 if (props.is_booked) {
                     const bookingModal = new bootstrap.Modal(document.getElementById('viewBookingModal'));
 
@@ -260,7 +249,6 @@
                     const meetingContainer = document.getElementById('meeting_link_container');
                     const actionContainer = document.getElementById('quick_action_container');
 
-                    // Reset containers
                     meetingContainer.classList.add('d-none');
                     actionContainer.classList.add('d-none');
 
@@ -274,7 +262,6 @@
                         badge.className = 'badge bg-primary fs-7';
                         actionContainer.classList.remove('d-none');
 
-                        // Set URL routes for accept and reject actions
                         document.getElementById('action_accept_btn').href = `/bookings/expert/action/${props.booking_id}/accept/`;
                         document.getElementById('action_reject_btn').href = `/bookings/expert/action/${props.booking_id}/reject/`;
                     } else {
@@ -285,13 +272,11 @@
                     return;
                 }
 
-                // IF CLICKED AN EXPIRED/PAST SLOT
                 if (props.is_past) {
                     alert("This is a past slot record and cannot be edited or deleted.");
                     return;
                 }
 
-                // IF CLICKED AN UPCOMING AVAILABLE SLOT -> PROMPT TO DELETE
                 const slotId = props.slot_id;
                 if (slotId && confirm(`Remove available slot for ${info.event.title}?`)) {
                     fetch(`/bookings/schedule/delete/${slotId}/`, {
@@ -312,6 +297,19 @@
         });
 
         calendar.render();
+
+        // Form validation before submit
+        const addSlotForm = document.getElementById('addSlotForm');
+        addSlotForm.addEventListener('submit', function(e) {
+            const startTime = document.getElementById('modal_start_time').value;
+            const endTime = document.getElementById('modal_end_time').value;
+            const dateInput = document.getElementById('modal_date_input').value;
+
+            if (!dateInput || !startTime || !endTime) {
+                e.preventDefault();
+                alert("Please select a valid date, start time, and end time on the calendar first.");
+            }
+        });
     });
 </script>
 
@@ -322,7 +320,7 @@
         border-radius: 3px;
         display: inline-block;
     }
-
+    
     .fc-event {
         cursor: pointer;
         border-radius: 6px;
@@ -330,7 +328,7 @@
         font-size: 0.82rem;
         font-weight: 500;
     }
-
+    
     .fc-day-past {
         background-color: #f8f9fa !important;
         opacity: 0.7;

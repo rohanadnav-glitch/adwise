@@ -1,18 +1,24 @@
-{% extends 'base.html' %}
-
-{% block title %}Adwise Video Consultation{% endblock %}
-
-{% block content %}
+{% extends 'base.html' %} {% block title %}Adwise Video Consultation{% endblock %} {% block content %}
 <div class="container-fluid py-4">
     <div class="card shadow border-0 bg-dark text-white rounded-4 overflow-hidden position-relative">
         <div class="row g-0">
             <!-- Remote Video (Main Screen) -->
             <div class="col-12 position-relative" style="height: 75vh; background: #1a1a1a;">
                 <video id="remoteVideo" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
-                
+
+                <!-- Remote Participant Name Overlay (Top Left of Main Screen) -->
+                <div class="position-absolute top-0 start-0 m-3 px-3 py-1 bg-black bg-opacity-50 rounded-pill text-white small fw-semibold shadow-sm">
+                    <i class="fa-solid fa-user-tie text-primary me-1"></i> <span id="remoteNameLabel">Participant</span>
+                </div>
+
                 <!-- Local Video (Picture-in-Picture) -->
                 <div class="position-absolute bottom-0 end-0 m-4 shadow-lg rounded-3 overflow-hidden border border-secondary" style="width: 250px; height: 160px; background: #000;">
                     <video id="localVideo" autoplay playsinline muted style="width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1);"></video>
+
+                    <!-- Local User Name Overlay (Bottom Left inside PiP) -->
+                    <div class="position-absolute bottom-0 start-0 m-2 px-2 py-1 bg-black bg-opacity-75 rounded text-white fw-semibold" style="font-size: 0.75rem;">
+                        <i class="fa-solid fa-user me-1"></i> <span id="localNameLabel">You</span>
+                    </div>
                 </div>
 
                 <!-- Call Controls -->
@@ -35,26 +41,43 @@
     </div>
 </div>
 
-{{ room_name|json_script:"room-name" }}
+<!-- Safe JSON injections from Django context -->
+{{ room_name|json_script:"room-name" }} {{ consultant_name|json_script:"consultant-name" }} {{ client_name|json_script:"client-name" }}
 
 <script>
     const roomName = JSON.parse(document.getElementById('room-name').textContent);
+    const consultantName = JSON.parse(document.getElementById('consultant-name').textContent);
+    const clientName = JSON.parse(document.getElementById('client-name').textContent);
+
+    // Set labels on screen dynamically
+    document.getElementById('localNameLabel').textContent = "You";
+
+    // Display the consultant name on the main remote feed screen overlay
+    document.getElementById('remoteNameLabel').textContent = consultantName;
+
     const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
     const signalingSocket = new WebSocket(`${wsScheme}://${window.location.host}/ws/call/${roomName}/`);
 
     let localStream, peerConnection;
-    // Using Google's STUN server to find public IPs
-    const config = { 'iceServers': [{'urls': 'stun:stun.l.google.com:19302'}] };
+    const config = {
+        'iceServers': [{
+            'urls': 'stun:stun.l.google.com:19302'
+        }]
+    };
 
     const localVideo = document.getElementById('localVideo');
     const remoteVideo = document.getElementById('remoteVideo');
     const callButton = document.getElementById('callButton');
-    
+
     // Auto-start camera on page load
-    window.onload = async () => {
+    window.onload = async() => {
         try {
-            localStream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
+            localStream = await navigator.mediaDevices.getUserMedia({
+                video: true,
+                audio: true
+            });
             localVideo.srcObject = localStream;
+            await localVideo.play().catch(e => console.log("Local video play error:", e));
         } catch (error) {
             console.error("Camera/Mic access denied.", error);
             alert("Please allow camera and microphone access to join the call.");
@@ -63,22 +86,30 @@
 
     function setupPeerConnection() {
         peerConnection = new RTCPeerConnection(config);
-        
+
         localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-        
-        peerConnection.ontrack = event => { 
-            remoteVideo.srcObject = event.streams[0]; 
+
+        peerConnection.ontrack = async(event) => {
+            console.log("Remote track received:", event.streams[0]);
+            remoteVideo.srcObject = event.streams[0];
+            await remoteVideo.play().catch(e => console.log("Remote video play error:", e));
         };
-        
+
         peerConnection.onicecandidate = event => {
             if (event.candidate) {
-                signalingSocket.send(JSON.stringify({'type': 'candidate', 'candidate': event.candidate}));
+                signalingSocket.send(JSON.stringify({
+                    'type': 'candidate',
+                    'candidate': event.candidate
+                }));
             }
+        };
+
+        peerConnection.onconnectionstatechange = () => {
+            console.log("WebRTC Connection State:", peerConnection.connectionState);
         };
     }
 
-    // Connect the call
-    callButton.onclick = async () => {
+    callButton.onclick = async() => {
         callButton.disabled = true;
         callButton.innerHTML = "Connected";
         callButton.classList.replace("btn-success", "btn-secondary");
@@ -86,20 +117,27 @@
         setupPeerConnection();
         const offer = await peerConnection.createOffer();
         await peerConnection.setLocalDescription(offer);
-        signalingSocket.send(JSON.stringify({'type': 'offer', 'offer': offer}));
+        signalingSocket.send(JSON.stringify({
+            'type': 'offer',
+            'offer': offer
+        }));
     };
 
-    // Handle incoming signals
-    signalingSocket.onmessage = async (e) => {
+    signalingSocket.onmessage = async(e) => {
         const data = JSON.parse(e.data);
+
+        if (!peerConnection && data.type !== 'offer') return;
+
         if (data.type === 'offer') {
             setupPeerConnection();
             await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
             const answer = await peerConnection.createAnswer();
             await peerConnection.setLocalDescription(answer);
-            signalingSocket.send(JSON.stringify({'type': 'answer', 'answer': answer}));
-            
-            // Auto-update UI for receiving user
+            signalingSocket.send(JSON.stringify({
+                'type': 'answer',
+                'answer': answer
+            }));
+
             callButton.disabled = true;
             callButton.innerHTML = "Connected";
             callButton.classList.replace("btn-success", "btn-secondary");
@@ -107,7 +145,9 @@
         } else if (data.type === 'answer') {
             await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
         } else if (data.type === 'candidate') {
-            await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+            if (peerConnection) {
+                await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+            }
         }
     };
 
@@ -123,22 +163,11 @@
         videoTrack.enabled = !videoTrack.enabled;
         document.getElementById('toggleVideo').innerHTML = videoTrack.enabled ? '<i class="fa-solid fa-video fs-5"></i>' : '<i class="fa-solid fa-video-slash fs-5 text-danger"></i>';
     };
-    // End Call Logic
+
     document.getElementById('endCallButton').onclick = () => {
-        // 1. Turn off the camera and microphone immediately
-        if (localStream) {
-            localStream.getTracks().forEach(track => track.stop());
-        }
-        
-        // 2. Close the WebRTC connection
-        if (peerConnection) {
-            peerConnection.close();
-        }
-
-        // 3. Close the current tab to return to the dashboard
+        if (localStream) localStream.getTracks().forEach(track => track.stop());
+        if (peerConnection) peerConnection.close();
         window.close();
-
-        // Fallback: If the browser blocks window.close() because it wasn't opened normally, redirect to home
         setTimeout(() => {
             window.location.href = "/";
         }, 500);
