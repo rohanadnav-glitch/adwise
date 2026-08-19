@@ -391,6 +391,9 @@ def search_experts_view(request):
     return render(request, 'bookings/search_results.html', context)
 
 
+
+
+
 @login_required
 def expert_detail_view(request, expert_id):
     expert = get_object_or_404(
@@ -577,31 +580,44 @@ def process_payment_view(request, booking_id):
 # ==========================================
 @login_required
 @transaction.atomic
-def request_session_view(request, slot_id):
-    """ Standard Single-Slot or Multi-Slot request handler with Topic & Note support """
+def request_session_view(request, slot_id=None):
+    """ Standard Single-Slot or Multi-Slot request handler with Exact Date mapping """
     if request.user.role != UserRole.USER:
         messages.error(request, "Only registered users can request expert sessions.")
         return redirect('bookings:search_experts')
 
     if request.method == 'POST':
-        slot_ids = request.POST.getlist('selected_slots')
+        # Captures values like "5" or "5|2026-08-26"
+        raw_slot_data = request.POST.getlist('selected_slots')
         title = request.POST.get('request_title', '').strip()
         description = request.POST.get('request_description', '').strip()
 
-        # If accessed via single-slot link or form POST without checkboxes
-        if not slot_ids and slot_id:
-            slot_ids = [slot_id]
+        # If accessed via single-slot form POST without checkboxes
+        if not raw_slot_data and slot_id:
+            passed_date = request.POST.get('slot_date')
+            if passed_date:
+                raw_slot_data = [f"{slot_id}|{passed_date}"]
+            else:
+                raw_slot_data = [str(slot_id)]
 
-        if not slot_ids:
+        if not raw_slot_data:
             messages.error(request, "Please select at least one consultation slot.")
             return redirect('bookings:search_experts')
 
         created_count = 0
         expert_user = None
-
         today = timezone.now().date()
 
-        for sid in slot_ids:
+        for item in raw_slot_data:
+            # Parse the ID and the specific Date sent from the frontend
+            if '|' in item:
+                sid, date_str = item.split('|')
+                # Lock the exact date the user clicked on the calendar
+                target_booking_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+            else:
+                sid = item
+                target_booking_date = None
+
             slot = get_object_or_404(
                 ExpertAvailability.objects.select_for_update(), 
                 id=sid, 
@@ -609,13 +625,18 @@ def request_session_view(request, slot_id):
             )
             expert_user = slot.expert.user
 
-            # Resolve exact target date for one-time vs recurring slots
-            if slot.is_recurring and slot.day_of_week is not None:
-                days_ahead = (slot.day_of_week - today.weekday()) % 7
-                target_booking_date = today + timedelta(days=days_ahead)
-            else:
-                target_booking_date = slot.date
+            # Fallback: If no date was passed, safely calculate the next valid occurrence
+            if not target_booking_date:
+                if slot.is_recurring and slot.day_of_week is not None:
+                    days_ahead = (slot.day_of_week - today.weekday()) % 7
+                    target_booking_date = today + timedelta(days=days_ahead)
+                    # If time has passed today, move to next week
+                    if target_booking_date < today:
+                        target_booking_date += timedelta(days=7)
+                else:
+                    target_booking_date = slot.date
 
+            # Ensure this exact slot + date combination isn't already requested by this user
             existing_request = SessionBooking.objects.filter(
                 user=request.user, 
                 slot=slot, 
@@ -648,8 +669,10 @@ def request_session_view(request, slot_id):
         return redirect('bookings:user_bookings')
 
     # Default GET fallback redirect
-    slot = get_object_or_404(ExpertAvailability, id=slot_id)
-    return redirect('bookings:expert_detail', expert_id=slot.expert.id)
+    if slot_id:
+        slot = get_object_or_404(ExpertAvailability, id=slot_id)
+        return redirect('bookings:expert_detail', expert_id=slot.expert.id)
+    return redirect('bookings:search_experts')
 
 
 @login_required

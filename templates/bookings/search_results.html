@@ -2,341 +2,393 @@
 {% block content %}
 
 <style>
-    /* HyperOS 6/7 Premium Two-Tier Glassmorphic UI */
+    /* Professional SaaS Dashboard Styling */
     body {
-        background-color: #f1f5f9;
+        background-color: #f8fafc;
         font-family: 'Inter', system-ui, -apple-system, sans-serif;
     }
-    .hyper-main-wrapper {
-        background: rgba(255, 255, 255, 0.75);
-        backdrop-filter: blur(40px);
-        -webkit-backdrop-filter: blur(40px);
-        border: 1px solid rgba(255, 255, 255, 0.9);
-        border-radius: 36px;
-        box-shadow: 0 30px 60px -12px rgba(15, 23, 42, 0.08);
-        padding: 2.5rem;
+    .main-container {
+        max-width: 1350px;
         margin: 2rem auto;
-        max-width: 1400px;
+        padding: 0 1.5rem;
     }
     
-    /* Main Floating Command Center Container */
-    .filter-bar-segmented {
-        background: rgba(255, 255, 255, 0.85);
-        backdrop-filter: blur(25px);
-        border: 1px solid rgba(255, 255, 255, 0.9);
-        border-radius: 28px;
-        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.03);
-        padding: 1.25rem;
-    }
-
-    /* Individual Inset Glass Tabs */
-    .filter-tab-box {
-        background: rgba(255, 255, 255, 0.95);
-        border: 1px solid rgba(226, 232, 240, 0.9);
-        border-radius: 18px;
-        padding: 0.6rem 0.9rem;
-        box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.9), 0 2px 6px rgba(0, 0, 0, 0.01);
-        transition: all 0.2s ease;
-        height: 100%;
-    }
-    .filter-tab-box:hover {
-        border-color: #cbd5e1;
+    /* Left Filter Card - Modern Pro Look */
+    .filter-card {
         background: #ffffff;
-        box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.9), 0 4px 12px rgba(0, 0, 0, 0.03);
+        border: 1px solid #e2e8f0;
+        border-radius: 20px;
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.03);
+        padding: 1.75rem;
     }
-
-    .form-label-pro {
-        font-size: 0.62rem;
+    .filter-title {
+        font-size: 1.1rem;
+        font-weight: 800;
+        color: #0f172a;
+        letter-spacing: -0.3px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.5rem;
+        border-bottom: 2px solid #f8fafc;
+        padding-bottom: 0.85rem;
+    }
+    .filter-group {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        padding: 0.75rem 1rem;
+        margin-bottom: 1rem;
+        transition: all 0.2s ease;
+    }
+    .filter-group:hover, .filter-group:focus-within {
+        background: #ffffff;
+        border-color: #6366f1;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.08);
+    }
+    .form-label-custom {
+        font-size: 0.68rem;
         font-weight: 700;
         letter-spacing: 0.6px;
         color: #64748b;
         text-transform: uppercase;
-        margin-bottom: 0.1rem;
+        margin-bottom: 0.25rem;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
     }
-    .form-control-pro, .form-select-pro {
+    .form-control, .form-select {
         background: transparent;
         border: none;
-        font-size: 0.85rem;
+        font-size: 0.875rem;
         font-weight: 600;
         color: #0f172a;
         padding: 0;
         box-shadow: none !important;
-        width: 100%;
     }
-    .form-control-pro:focus, .form-select-pro:focus {
+    .form-control:focus, .form-select:focus {
         background: transparent;
         color: #0f172a;
     }
-
-    /* Gradient Search Button */
-    .btn-search-pill {
-        background: linear-gradient(135deg, #a855f7, #6366f1);
+    .btn-apply-filters {
+        background: linear-gradient(135deg, #0f172a, #1e293b);
         border: none;
         color: white;
-        border-radius: 18px;
+        border-radius: 14px;
         font-weight: 600;
-        padding: 0.8rem 1.5rem;
+        padding: 0.85rem;
         width: 100%;
-        height: 100%;
-        box-shadow: 0 6px 16px rgba(99, 102, 241, 0.35);
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
         transition: all 0.2s ease;
     }
-    .btn-search-pill:hover {
-        opacity: 0.95;
-        transform: translateY(-1px);
+    .btn-apply-filters:hover {
+        background: linear-gradient(135deg, #1e293b, #334155);
         color: white;
-        box-shadow: 0 8px 20px rgba(99, 102, 241, 0.45);
+        transform: translateY(-1px);
     }
 
-    .expert-card-pro {
+    /* Expert Horizontal Card */
+    .expert-row-card {
         background: #ffffff;
-        border-radius: 24px;
-        border: 1px solid #edf2f7;
+        border-radius: 20px;
+        border: 1px solid #e2e8f0;
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+        padding: 1.75rem;
+        position: relative;
         transition: all 0.25s ease;
     }
-    .expert-card-pro:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.06);
+    .expert-row-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.06);
         border-color: #cbd5e1;
     }
-    .avatar-img {
-        width: 76px;
-        height: 76px;
-        object-fit: cover;
-        border-radius: 50%;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-    }
-    .avatar-fallback {
-        width: 76px;
-        height: 76px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, #7c3aed, #4f46e5);
+    
+    /* Live Status Badge */
+    .live-badge {
+        background: #22c55e;
         color: white;
-        font-size: 24px;
+        font-size: 0.65rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 0.25rem 0.6rem;
+        border-radius: 6px;
+    }
+
+    /* Avatar Frame */
+    .avatar-wrapper {
+        position: relative;
+        width: 100px;
+        height: 100px;
+        border-radius: 16px;
+        border: 2px solid #22c55e;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+        flex-shrink: 0;
+    }
+    .expert-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    .expert-fallback {
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, #0f172a, #334155);
+        color: white;
+        font-size: 32px;
         font-weight: 700;
         display: flex;
         align-items: center;
         justify-content: center;
-        box-shadow: 0 6px 16px rgba(79, 70, 229, 0.25);
     }
-    .badge-pill-pro {
-        border-radius: 50rem;
-        padding: 0.35rem 0.85rem;
+
+    /* Pills & Badges */
+    .custom-pill {
+        background: #f1f5f9;
+        color: #475569;
+        border-radius: 8px;
+        padding: 0.3rem 0.7rem;
+        font-size: 0.78rem;
         font-weight: 600;
-        font-size: 0.72rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
     }
-    .scrollable-feed {
-        max-height: 700px;
+    .professional-tag {
+        color: #4f46e5;
+        background: #eef2ff;
+        border: 1px solid #e0e7ff;
+        font-size: 0.7rem;
+        font-weight: 700;
+        padding: 0.15rem 0.6rem;
+        border-radius: 6px;
+    }
+
+    /* Professional Action Button */
+    .btn-schedule-slot {
+        background: #0f172a;
+        border: none;
+        color: #ffffff;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        padding: 0.75rem 1.25rem;
+        width: 100%;
+        transition: all 0.2s ease;
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
+    }
+    .btn-schedule-slot:hover {
+        background: #1e293b;
+        color: #ffffff;
+        transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(15, 23, 42, 0.25);
+    }
+
+    .scrollable-results {
+        max-height: 800px;
         overflow-y: auto;
         padding-right: 6px;
     }
-    .scrollable-feed::-webkit-scrollbar {
-        width: 6px;
-    }
-    .scrollable-feed::-webkit-scrollbar-track {
-        background: rgba(0,0,0,0.02);
-        border-radius: 10px;
-    }
-    .scrollable-feed::-webkit-scrollbar-thumb {
-        background: rgba(0,0,0,0.1);
-        border-radius: 10px;
-    }
 </style>
 
-<div class="container-fluid px-lg-5">
-    <div class="hyper-main-wrapper">
+<div class="main-container">
+    <div class="row g-4">
         
-        <!-- Top Two-Tier Segmented Glassmorphic Filter Bar -->
-        <form method="GET" action="{% url 'bookings:search_experts' %}" class="filter-bar-segmented mb-5">
-            
-            <!-- Tier 1: Search, Category, Subcategory, Date -->
-            <div class="row g-2 mb-2">
-                <!-- Keyword -->
-                <div class="col-lg-4 col-md-6">
-                    <div class="filter-tab-box">
-                        <div class="form-label-pro">Keyword / Expert Name</div>
-                        <div class="d-flex align-items-center justify-content-between">
-                            <input type="text" name="q" class="form-control form-control-pro" placeholder="Search skills, degrees, names..." value="{{ selected_q }}">
-                            <i class="fa-solid fa-magnifying-glass text-muted small ms-2"></i>
-                        </div>
-                    </div>
+        <!-- LEFT COLUMN: REFINED FILTERS SIDEBAR -->
+        <div class="col-lg-3">
+            <div class="filter-card sticky-top" style="top: 2rem;">
+                <div class="filter-title">
+                    <span><i class="fa-solid fa-filter text-primary me-2"></i> Filters</span>
+                    <a href="{% url 'bookings:search_experts' %}" class="text-decoration-none text-muted small fw-semibold" style="font-size: 0.75rem;">Reset All</a>
                 </div>
+                
+                <form method="GET" action="{% url 'bookings:search_experts' %}">
+                    
+                    <!-- Search Keyword -->
+                    <div class="filter-group">
+                        <label class="form-label-custom"><i class="fa-solid fa-magnifying-glass"></i> Search Expert</label>
+                        <input type="text" name="q" class="form-control" placeholder="Name or specialization" value="{{ selected_q }}">
+                    </div>
 
-                <!-- Category -->
-                <div class="col-lg-3 col-md-6">
-                    <div class="filter-tab-box">
-                        <div class="form-label-pro">Category</div>
-                        <select name="category" id="id_category" class="form-select form-select-pro">
+                    <!-- Category -->
+                    <div class="filter-group">
+                        <label class="form-label-custom"><i class="fa-solid fa-layer-group"></i> Category</label>
+                        <select name="category" id="id_category" class="form-select">
                             <option value="">All Categories</option>
                             {% for cat in categories %}
                             <option value="{{ cat.id }}" {% if cat.id == selected_category %}selected{% endif %}>{{ cat.name }}</option>
                             {% endfor %}
                         </select>
                     </div>
-                </div>
 
-                <!-- Subcategory -->
-                <div class="col-lg-3 col-md-6">
-                    <div class="filter-tab-box">
-                        <div class="form-label-pro">Subcategory</div>
-                        <select name="subcategory" id="id_subcategory" class="form-select form-select-pro">
+                    <!-- Subcategory -->
+                    <div class="filter-group">
+                        <label class="form-label-custom"><i class="fa-solid fa-code-branch"></i> Subcategory</label>
+                        <select name="subcategory" id="id_subcategory" class="form-select">
                             <option value="">All Subcategories</option>
                         </select>
                     </div>
-                </div>
 
-                <!-- Date -->
-                <div class="col-lg-2 col-md-6">
-                    <div class="filter-tab-box">
-                        <div class="form-label-pro">Available Date</div>
-                        <input type="date" name="date" class="form-control form-control-pro text-secondary" value="{{ selected_date }}">
-                    </div>
-                </div>
-            </div>
-
-            <!-- Tier 2: Location (State, District, City) & Max Fee & Search Action -->
-            <div class="row g-2 align-items-center">
-                <!-- State -->
-                <div class="col-lg-3 col-md-4">
-                    <div class="filter-tab-box">
-                        <div class="form-label-pro">State</div>
-                        <select name="state" id="id_state" class="form-select form-select-pro">
+                    <!-- State -->
+                    <div class="filter-group">
+                        <label class="form-label-custom"><i class="fa-solid fa-map"></i> State</label>
+                        <select name="state" id="id_state" class="form-select">
                             <option value="">All States</option>
                             {% for st in states %}
                             <option value="{{ st.id }}" {% if st.id == selected_state %}selected{% endif %}>{{ st.name }}</option>
                             {% endfor %}
                         </select>
                     </div>
-                </div>
 
-                <!-- District -->
-                <div class="col-lg-3 col-md-4">
-                    <div class="filter-tab-box">
-                        <div class="form-label-pro">District</div>
-                        <select name="district" id="id_district" class="form-select form-select-pro">
+                    <!-- District -->
+                    <div class="filter-group">
+                        <label class="form-label-custom"><i class="fa-solid fa-location-crosshairs"></i> District</label>
+                        <select name="district" id="id_district" class="form-select">
                             <option value="">All Districts</option>
                         </select>
                     </div>
-                </div>
 
-                <!-- City -->
-                <div class="col-lg-3 col-md-4">
-                    <div class="filter-tab-box">
-                        <div class="form-label-pro">City</div>
-                        <select name="city" id="id_city" class="form-select form-select-pro">
+                    <!-- City -->
+                    <div class="filter-group">
+                        <label class="form-label-custom"><i class="fa-solid fa-city"></i> City</label>
+                        <select name="city" id="id_city" class="form-select">
                             <option value="">All Cities</option>
                         </select>
                     </div>
-                </div>
 
-                <!-- Max Fee (with min=0 fix to prevent negative amounts) -->
-                <div class="col-lg-2 col-md-6">
-                    <div class="filter-tab-box">
-                        <div class="form-label-pro">Max Fee (₹/hr)</div>
-                        <input type="number" name="max_fee" min="0" class="form-control form-control-pro" placeholder="e.g. 2000" value="{{ selected_max_fee }}">
+                    <!-- Max Fee -->
+                    <div class="filter-group">
+                        <label class="form-label-custom"><i class="fa-solid fa-indian-rupee-sign"></i> Max Fee (₹/hr)</label>
+                        <input type="number" name="max_fee" min="0" class="form-control" placeholder="e.g. 2000" value="{{ selected_max_fee }}">
                     </div>
-                </div>
 
-                <!-- Submit Search Button -->
-                <div class="col-lg-1 col-md-6">
-                    <button type="submit" class="btn btn-search-pill d-flex align-items-center justify-content-center gap-2">
-                        <i class="fa-solid fa-magnifying-glass"></i> <span class="d-lg-none">Search</span>
+                    <!-- Date Filter -->
+                    <div class="filter-group mb-4">
+                        <label class="form-label-custom"><i class="fa-regular fa-calendar"></i> Available Date</label>
+                        <input type="date" name="date" class="form-control text-secondary" value="{{ selected_date }}">
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button type="submit" class="btn btn-apply-filters">
+                        <i class="fa-solid fa-arrow-right-to-bracket me-2"></i> Apply Filters
                     </button>
-                </div>
-            </div>
-
-        </form>
-
-        <!-- Header Info & Reset -->
-        <div class="d-flex align-items-center justify-content-between mb-4 px-2">
-            <div>
-                <h3 class="fw-bold text-dark m-0">Top Experts</h3>
-                <span class="text-muted small fw-semibold">{{ experts|length }} Experts Found</span>
-            </div>
-            <div>
-                <a href="{% url 'bookings:search_experts' %}" class="text-decoration-none text-secondary small fw-bold bg-white px-3 py-2 rounded-pill border shadow-sm">
-                    <i class="fa-solid fa-rotate-right me-1"></i> Reset Filters
-                </a>
+                </form>
             </div>
         </div>
 
-        <!-- Scrollable Feed of Long Horizontal Cards -->
-        <div class="scrollable-feed pe-2">
-            {% if experts %}
-            <div class="d-flex flex-column gap-3">
-                {% for expert in experts %}
-                <div class="expert-card-pro p-4 d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-4">
-                    
-                    <!-- Left: Avatar, Name & Details -->
-                    <div class="d-flex align-items-center gap-4">
-                        {% if expert.profile_picture %}
-                            <img src="{{ expert.profile_picture.url }}" alt="{{ expert.user.get_full_name }}" class="avatar-img flex-shrink-0">
-                        {% else %}
-                            <div class="avatar-fallback flex-shrink-0">
-                                {{ expert.user.first_name|slice:":1" }}{{ expert.user.last_name|slice:":1" }}
-                            </div>
-                        {% endif %}
+        <!-- RIGHT COLUMN: EXPERTS LISTING FEED -->
+        <div class="col-lg-9">
+            
+            <!-- Top Header & Online Counter -->
+            <div class="d-flex align-items-center justify-content-between mb-4 bg-white p-3 rounded-4 border shadow-sm">
+                <div>
+                    <h4 class="fw-bold text-dark m-0">Top Experts Online</h4>
+                    <span class="text-success small fw-bold d-flex align-items-center gap-1 mt-1">
+                        <i class="fa-solid fa-circle" style="font-size: 8px;"></i> {{ experts|length }} Online & Available
+                    </span>
+                </div>
+            </div>
 
-                        <div>
-                            <div class="d-flex align-items-center gap-2 mb-1">
-                                <h5 class="fw-bold text-dark m-0">{{ expert.user.get_full_name|default:expert.user.username }}</h5>
-                                {% if expert.average_rating >= 4.5 %}
-                                    <span class="badge bg-primary bg-opacity-10 text-primary badge-pill-pro">Top Rated</span>
-                                {% elif expert.total_reviews_count > 0 %}
-                                    <span class="badge bg-success bg-opacity-10 text-success badge-pill-pro">Verified Expert</span>
+            <!-- Scrollable Expert Feed Cards -->
+            <div class="scrollable-results pe-2">
+                {% if experts %}
+                <div class="d-flex flex-column gap-4">
+                    {% for expert in experts %}
+                    <div class="expert-row-card">
+                        
+                        <!-- Top Ribbon: Live Status & Professional Badge -->
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <span class="live-badge"><i class="fa-solid fa-bolt me-1"></i> Available Now</span>
+                            <span class="professional-tag"><i class="fa-solid fa-user-tie me-1"></i> Active Expert</span>
+                        </div>
+
+                        <div class="row align-items-center g-4">
+                            
+                            <!-- Left: Avatar & Basic Details -->
+                            <div class="col-lg-7 d-flex align-items-start gap-3">
+                                {% if expert.profile_picture %}
+                                    <div class="avatar-wrapper">
+                                        <img src="{{ expert.profile_picture.url }}" alt="{{ expert.user.get_full_name }}" class="expert-img">
+                                    </div>
                                 {% else %}
-                                    <span class="badge bg-secondary bg-opacity-10 text-secondary badge-pill-pro">New Expert</span>
+                                    <div class="avatar-wrapper">
+                                        <div class="expert-fallback">
+                                            {{ expert.user.first_name|slice:":1" }}{{ expert.user.last_name|slice:":1" }}
+                                        </div>
+                                    </div>
                                 {% endif %}
+
+                                <div class="flex-grow-1">
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <h5 class="fw-bold text-dark m-0">{{ expert.user.get_full_name|default:expert.user.username }}</h5>
+                                    </div>
+
+                                    <!-- Category/Subcategory Pill -->
+                                    <div class="mb-2 d-flex flex-wrap gap-1">
+                                        {% if expert.category %}
+                                        <span class="custom-pill text-primary bg-primary bg-opacity-10">{{ expert.category.name }}</span>
+                                        {% endif %}
+                                        {% for sub in expert.subcategories.all %}
+                                        <span class="custom-pill text-info bg-info bg-opacity-10">{{ sub.name }}</span>
+                                        {% endfor %}
+                                    </div>
+
+                                    <!-- Qualification & Location -->
+                                    <p class="text-secondary small fw-medium mb-1">
+                                        <i class="fa-solid fa-graduation-cap me-1 text-muted"></i> {{ expert.qualification }} • <i class="fa-solid fa-briefcase ms-2 me-1 text-muted"></i> {{ expert.experience_years }}+ Years experience
+                                    </p>
+                                    <p class="text-muted small mb-2">
+                                        <i class="fa-solid fa-location-dot me-1 text-danger"></i> {{ expert.city.name|default:"Online" }}, {{ expert.state.name|default:"" }}
+                                    </p>
+
+                                    <!-- Rating & Reviews -->
+                                    <div class="text-warning small fw-bold d-flex align-items-center gap-1">
+                                        <i class="fa-solid fa-star"></i> 
+                                        {% if expert.average_rating > 0 %}{{ expert.average_rating|floatformat:1 }} 
+                                        <span class="text-muted fw-normal ms-1">({{ expert.total_reviews_count }} reviews)</span>
+                                        {% else %} 5.0 <span class="text-muted fw-normal ms-1">(New Expert)</span> {% endif %}
+                                    </div>
+                                </div>
                             </div>
 
-                            <p class="text-secondary small fw-semibold mb-1">
-                                {{ expert.qualification }} • {{ expert.experience_years }}+ Years Experience
-                            </p>
+                            <!-- Right: Pricing & Action Button -->
+                            <div class="col-lg-5 border-top border-lg-top-0 pt-3 pt-lg-0 ps-lg-4 border-lg-start">
+                                <div class="d-flex align-items-center justify-content-between mb-3">
+                                    <span class="text-muted small fw-bold text-uppercase" style="font-size: 0.7rem;">Consultation Fee</span>
+                                    <div class="text-end">
+                                        <span class="fw-bold fs-4 text-dark">₹{{ expert.hourly_rate|floatformat:0 }}</span>
+                                        <span class="text-muted small">/ 60 mins</span>
+                                    </div>
+                                </div>
 
-                            <p class="text-muted small mb-2 text-truncate" style="max-width: 550px;">
-                                {{ expert.bio|default:expert.category.name }}
-                            </p>
+                                <div class="d-grid">
+                                    <a href="{% url 'bookings:expert_detail' expert.id %}" class="btn btn-schedule-slot text-center text-decoration-none">
+                                        <i class="fa-solid fa-calendar-check me-2"></i> View Profile & Schedule Slot
+                                    </a>
+                                </div>
 
-                            <div class="d-flex align-items-center text-muted small gap-3">
-                                <span><i class="fa-solid fa-location-dot me-1 text-secondary"></i> {{ expert.city.name|default:"Online" }}, {{ expert.state.name|default:"" }}</span>
-                                <span class="text-success fw-semibold"><i class="fa-solid fa-circle small me-1" style="font-size: 5px;"></i> Available Slots Ready</span>
+                                <!-- Availability Notice Banner -->
+                                <div class="mt-3 p-2 rounded-3 bg-success bg-opacity-10 border border-success border-opacity-25 text-success small fw-semibold text-center">
+                                    <i class="fa-regular fa-clock me-1"></i> Open Slots Available for Booking
+                                </div>
                             </div>
+
                         </div>
                     </div>
-
-                    <!-- Right: Pricing, Rating & Action Button -->
-                    <div class="d-flex align-items-center justify-content-between justify-content-lg-end gap-4 border-top border-lg-top-0 pt-3 pt-lg-0">
-                        <div class="text-lg-end">
-                            <div class="text-warning fw-bold mb-1">
-                                <i class="fa-solid fa-star"></i> 
-                                {% if expert.average_rating > 0 %}{{ expert.average_rating|floatformat:1 }} <span class="text-muted fw-normal">({{ expert.total_reviews_count }})</span>
-                                {% else %} 0.0 <span class="text-muted fw-normal">(0)</span> {% endif %}
-                            </div>
-                            <div class="fw-bold text-dark fs-6">
-                                ₹{{ expert.hourly_rate|floatformat:0 }} <span class="text-muted fw-normal small">/ 60 mins</span>
-                            </div>
-                        </div>
-
-                        <div>
-                            <a href="{% url 'bookings:expert_detail' expert.id %}" class="btn btn-search-pill shadow-sm py-2 px-4 text-center text-decoration-none" style="font-size: 0.9rem; height: auto;">
-                                Book Session <i class="fa-solid fa-arrow-right ms-1 small"></i>
-                            </a>
-                        </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="filter-card text-center p-5">
+                    <div class="py-5">
+                        <i class="fa-solid fa-user-slash text-muted fa-3x mb-3 opacity-50"></i>
+                        <h5 class="fw-bold text-dark">No Experts Found Online</h5>
+                        <p class="text-muted small mb-0">Try clearing or broadening your search filters on the left panel.</p>
                     </div>
+                </div>
+                {% endif %}
+            </div>
 
-                </div>
-                {% endfor %}
-            </div>
-            {% else %}
-            <div class="expert-card-pro text-center p-5">
-                <div class="py-5">
-                    <i class="fa-solid fa-user-slash text-muted fa-3x mb-3 opacity-50"></i>
-                    <h5 class="fw-bold text-dark">No Available Experts Found</h5>
-                    <p class="text-muted small mb-0">Try clearing or adjusting your search filters above.</p>
-                </div>
-            </div>
-            {% endif %}
         </div>
 
     </div>

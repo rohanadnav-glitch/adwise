@@ -18,5 +18,8 @@ urlpatterns = [
     path('dashboard/user/', views.user_dashboard_view, name='user_dashboard'),
     path('dashboard/expert/', views.expert_dashboard_view, name='expert_dashboard'),
     path('expert/profile/edit/', views.edit_expert_profile_view, name='edit_expert_profile'),
-    path('expert/edit-profile/', views.edit_expert_profile_view, name='edit_expert_profile')
+    path('expert/edit-profile/', views.edit_expert_profile_view, name='edit_expert_profile'),
+    path('expert/toggle-availability/', views.toggle_expert_availability_view, name='toggle_availability'),
+    
+    
 ]
