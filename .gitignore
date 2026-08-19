@@ -1,2 +1,18 @@
-__pycache__
+﻿# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
 
+# Environment
+.venv/
+.env
+
+# Django
+*.log
+db.sqlite3
+media/
+staticfiles/
+
+# OS
+Thumbs.db
+.DS_Store
