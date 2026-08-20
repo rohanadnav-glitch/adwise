@@ -1,19 +1,20 @@
 {% extends 'base.html' %}
 
-{% block title %}Edit Consultation Rates & Profile - Adwise{% endblock %}
+{% block title %}Edit Profile & Professional Details - Adwise{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center py-4">
-    <div class="col-md-7">
+    <div class="col-md-8">
         <div class="card shadow-sm border-0 p-4">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h3 class="fw-bold m-0"><i class="fa-solid fa-user-pen text-primary me-2"></i>Edit Profile & Rates</h3>
+                <h3 class="fw-bold m-0"><i class="fa-solid fa-user-pen text-primary me-2"></i>Edit Profile & Details</h3>
                 <a href="{% url 'bookings:schedule_manager' %}" class="btn btn-outline-secondary btn-sm">&larr; Back to Schedule</a>
             </div>
             
-            <p class="text-muted small mb-4">Update your hourly consultation fee and professional details. Existing confirmed bookings will keep their original rate.</p>
+            <p class="text-muted small mb-4">Update your profile picture, personal credentials, social profiles, certificates, resume, and consultation fees.</p>
 
-            <form method="POST">
+            <!-- IMPORTANT: enctype="multipart/form-data" is required for image and document uploads -->
+            <form method="POST" enctype="multipart/form-data">
                 {% csrf_token %}
 
                 {% if form.errors %}
@@ -29,16 +30,79 @@
                 </div>
                 {% endif %}
                 
+                <!-- PERSONAL DETAILS SECTION -->
+                <h5 class="fw-bold text-secondary mb-3 border-bottom pb-2">Personal Information</h5>
+                
+                <!-- Profile Picture Field -->
+                <div class="mb-3 card bg-light border-0 p-3">
+                    <label class="form-label fw-semibold text-dark mb-2">
+                        <i class="fa-solid fa-camera text-primary me-1"></i> Profile Picture
+                    </label>
+                    <div class="d-flex align-items-center gap-3">
+                        {% if expert_profile.profile_picture %}
+                            <img src="{{ expert_profile.profile_picture.url }}" alt="Profile Photo" class="rounded-circle shadow-sm border" style="width: 70px; height: 70px; object-fit: cover;">
+                        {% else %}
+                            <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center fw-bold shadow-sm" style="width: 70px; height: 70px; font-size: 24px;">
+                                {{ expert_profile.user.first_name|slice:":1" }}{{ expert_profile.user.last_name|slice:":1" }}
+                            </div>
+                        {% endif %}
+                        <div class="flex-grow-1">
+                            {{ form.profile_picture }}
+                            <small class="text-muted d-block mt-1">Upload a professional headshot (JPG, PNG).</small>
+                        </div>
+                    </div>
+                    {% if form.profile_picture.errors %}
+                    <div class="text-danger small mt-1">{{ form.profile_picture.errors|striptags }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">First Name</label>
+                        {{ form.first_name }}
+                        {% if form.first_name.errors %}
+                        <div class="text-danger small mt-1">{{ form.first_name.errors|striptags }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Last Name</label>
+                        {{ form.last_name }}
+                        {% if form.last_name.errors %}
+                        <div class="text-danger small mt-1">{{ form.last_name.errors|striptags }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Date of Birth</label>
+                        {{ form.date_of_birth }}
+                        {% if form.date_of_birth.errors %}
+                        <div class="text-danger small mt-1">{{ form.date_of_birth.errors|striptags }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">WhatsApp Number (Emergency / Contact)</label>
+                        {{ form.whatsapp_number }}
+                        {% if form.whatsapp_number.errors %}
+                        <div class="text-danger small mt-1">{{ form.whatsapp_number.errors|striptags }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- PROFESSIONAL CREDENTIALS SECTION -->
+                <h5 class="fw-bold text-secondary mb-3 mt-4 border-bottom pb-2">Professional Credentials</h5>
+
                 <!-- Consultation Fee Field -->
-                <div class="card bg-light border-primary border-opacity-25 p-3 mb-4">
-                    <label class="form-label fw-bold text-success fs-5">
+                <div class="card bg-light border-primary border-opacity-25 p-3 mb-3">
+                    <label class="form-label fw-bold text-success fs-6">
                         <i class="fa-solid fa-indian-rupee-sign me-1"></i> Hourly Consultation Fee (₹)
                     </label>
                     {{ form.hourly_rate }}
                     {% if form.hourly_rate.errors %}
                     <div class="text-danger small mt-1">{{ form.hourly_rate.errors|striptags }}</div>
                     {% endif %}
-                    <small class="text-muted mt-1">This rate will apply to all newly requested consultation slots (enter whole Rupee amounts).</small>
+                    <small class="text-muted mt-1">This rate applies to all newly requested slots.</small>
                 </div>
 
                 <div class="mb-3">
@@ -65,9 +129,63 @@
                     {% endif %}
                 </div>
 
+                <!-- DOCUMENTS UPLOAD SECTION -->
+                <h5 class="fw-bold text-secondary mb-3 mt-4 border-bottom pb-2">Documents & Credentials</h5>
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold"><i class="fa-solid fa-file-pdf me-1 text-danger"></i> Upload Resume (CV)</label>
+                        {{ form.resume }}
+                        {% if form.instance.resume %}
+                            <small class="d-block mt-1 text-muted">Current: <a href="{{ form.instance.resume.url }}" target="_blank">View Resume</a></small>
+                        {% endif %}
+                        {% if form.resume.errors %}
+                        <div class="text-danger small mt-1">{{ form.resume.errors|striptags }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold"><i class="fa-solid fa-certificate me-1 text-warning"></i> Upload Certificate / Degree</label>
+                        {{ form.certificate }}
+                        {% if form.instance.certificate %}
+                            <small class="d-block mt-1 text-muted">Current: <a href="{{ form.instance.certificate.url }}" target="_blank">View Certificate</a></small>
+                        {% endif %}
+                        {% if form.certificate.errors %}
+                        <div class="text-danger small mt-1">{{ form.certificate.errors|striptags }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- SOCIAL MEDIA LINKS SECTION -->
+                <h5 class="fw-bold text-secondary mb-3 mt-4 border-bottom pb-2">Social Media Profiles</h5>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold"><i class="fa-brands fa-linkedin text-primary me-1"></i> LinkedIn Profile URL</label>
+                    {{ form.linkedin_url }}
+                    {% if form.linkedin_url.errors %}
+                    <div class="text-danger small mt-1">{{ form.linkedin_url.errors|striptags }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold"><i class="fa-brands fa-instagram text-danger me-1"></i> Instagram Profile URL</label>
+                    {{ form.instagram_url }}
+                    {% if form.instagram_url.errors %}
+                    <div class="text-danger small mt-1">{{ form.instagram_url.errors|striptags }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold"><i class="fa-brands fa-facebook text-primary me-1"></i> Facebook Profile URL</label>
+                    {{ form.facebook_url }}
+                    {% if form.facebook_url.errors %}
+                    <div class="text-danger small mt-1">{{ form.facebook_url.errors|striptags }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- SUBMIT BUTTON -->
                 <div class="d-grid mt-4">
                     <button type="submit" class="btn btn-success fw-bold py-2 fs-5">
-                        <i class="fa-solid fa-floppy-disk me-2"></i>Save Changes
+                        <i class="fa-solid fa-floppy-disk me-2"></i>Save All Changes
                     </button>
                 </div>
             </form>

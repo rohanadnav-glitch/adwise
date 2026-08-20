@@ -14,6 +14,8 @@ from .forms import ReviewForm
 from django.http import JsonResponse
 from datetime import datetime, timedelta, time
 from .utils import send_session_email_notification, check_and_release_expired_locks
+from django.db.models import Count, Q, FloatField
+from django.db.models.functions import Coalesce
 
 
 # ==========================================
@@ -314,12 +316,20 @@ def search_experts_view(request):
     max_fee = request.GET.get('max_fee')
     selected_date = request.GET.get('date')
 
-    experts = ExpertProfile.objects.select_related(
+    # 1. Base database query with ranking annotations and availability check
+    raw_experts = ExpertProfile.objects.select_related(
         'user', 'category', 'subcategory', 'state', 'district', 'city'
-    ).prefetch_related('subcategories').all()
+    ).prefetch_related('subcategories').annotate(
+        score=(
+            Coalesce('cached_average_rating', 0.0, output_field=FloatField()) * 20 +
+            Coalesce('total_sessions_completed', 0.0, output_field=FloatField()) * 2 +
+            Coalesce('experience_years', 0.0, output_field=FloatField()) * 4
+        )
+    ).filter(is_available=True)
 
+    # Apply all search filters to raw_experts
     if query:
-        experts = experts.filter(
+        raw_experts = raw_experts.filter(
             Q(user__first_name__icontains=query) |
             Q(user__last_name__icontains=query) |
             Q(qualification__icontains=query) |
@@ -328,31 +338,49 @@ def search_experts_view(request):
         ).distinct()
 
     if category_id and category_id.isdigit():
-        experts = experts.filter(category_id=category_id)
+        raw_experts = raw_experts.filter(category_id=category_id)
         
     if subcategory_id and subcategory_id.isdigit():
-        experts = experts.filter(
+        raw_experts = raw_experts.filter(
             Q(subcategory_id=subcategory_id) | Q(subcategories__id=subcategory_id)
         ).distinct()
 
     if state_id and state_id.isdigit():
-        experts = experts.filter(state_id=state_id)
+        raw_experts = raw_experts.filter(state_id=state_id)
     if district_id and district_id.isdigit():
-        experts = experts.filter(district_id=district_id)
+        raw_experts = raw_experts.filter(district_id=district_id)
     if city_id and city_id.isdigit():
-        experts = experts.filter(city_id=city_id)
+        raw_experts = raw_experts.filter(city_id=city_id)
 
     if max_fee:
         try:
-            experts = experts.filter(hourly_rate__lte=float(max_fee))
+            raw_experts = raw_experts.filter(hourly_rate__lte=float(max_fee))
         except ValueError:
             pass
 
     if selected_date:
-        experts = experts.filter(
+        raw_experts = raw_experts.filter(
             availabilities__date=selected_date,
             availabilities__is_booked=False
         ).distinct()
+
+    today = timezone.now().date()
+
+    # 2. Python-level Post-Filtering: Keep ONLY experts who have genuinely active/future open slots
+    experts = []
+    for exp in raw_experts:
+        # Check if the expert has any unbooked slots that are either recurring or scheduled for today/future
+        has_valid_open_slots = exp.availabilities.filter(
+            is_booked=False
+        ).filter(
+            Q(date__gte=today) | Q(is_recurring=True)
+        ).exists()
+
+        if has_valid_open_slots:
+            experts.append(exp)
+
+    # 3. Sort final list by score descending (highest ranking score first)
+    experts.sort(key=lambda x: x.score, reverse=True)
 
     from apps.categories.models import Category
     from apps.locations.models import State
@@ -371,6 +399,10 @@ def search_experts_view(request):
         'selected_date': selected_date,
     }
     return render(request, 'bookings/search_results.html', context)
+
+
+
+
 
 @login_required
 def expert_detail_view(request, expert_id):
@@ -558,31 +590,44 @@ def process_payment_view(request, booking_id):
 # ==========================================
 @login_required
 @transaction.atomic
-def request_session_view(request, slot_id):
-    """ Standard Single-Slot or Multi-Slot request handler with Topic & Note support """
+def request_session_view(request, slot_id=None):
+    """ Standard Single-Slot or Multi-Slot request handler with Exact Date mapping """
     if request.user.role != UserRole.USER:
         messages.error(request, "Only registered users can request expert sessions.")
         return redirect('bookings:search_experts')
 
     if request.method == 'POST':
-        slot_ids = request.POST.getlist('selected_slots')
+        # Captures values like "5" or "5|2026-08-26"
+        raw_slot_data = request.POST.getlist('selected_slots')
         title = request.POST.get('request_title', '').strip()
         description = request.POST.get('request_description', '').strip()
 
-        # If accessed via single-slot link or form POST without checkboxes
-        if not slot_ids and slot_id:
-            slot_ids = [slot_id]
+        # If accessed via single-slot form POST without checkboxes
+        if not raw_slot_data and slot_id:
+            passed_date = request.POST.get('slot_date')
+            if passed_date:
+                raw_slot_data = [f"{slot_id}|{passed_date}"]
+            else:
+                raw_slot_data = [str(slot_id)]
 
-        if not slot_ids:
+        if not raw_slot_data:
             messages.error(request, "Please select at least one consultation slot.")
             return redirect('bookings:search_experts')
 
         created_count = 0
         expert_user = None
-
         today = timezone.now().date()
 
-        for sid in slot_ids:
+        for item in raw_slot_data:
+            # Parse the ID and the specific Date sent from the frontend
+            if '|' in item:
+                sid, date_str = item.split('|')
+                # Lock the exact date the user clicked on the calendar
+                target_booking_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+            else:
+                sid = item
+                target_booking_date = None
+
             slot = get_object_or_404(
                 ExpertAvailability.objects.select_for_update(), 
                 id=sid, 
@@ -590,13 +635,18 @@ def request_session_view(request, slot_id):
             )
             expert_user = slot.expert.user
 
-            # Resolve exact target date for one-time vs recurring slots
-            if slot.is_recurring and slot.day_of_week is not None:
-                days_ahead = (slot.day_of_week - today.weekday()) % 7
-                target_booking_date = today + timedelta(days=days_ahead)
-            else:
-                target_booking_date = slot.date
+            # Fallback: If no date was passed, safely calculate the next valid occurrence
+            if not target_booking_date:
+                if slot.is_recurring and slot.day_of_week is not None:
+                    days_ahead = (slot.day_of_week - today.weekday()) % 7
+                    target_booking_date = today + timedelta(days=days_ahead)
+                    # If time has passed today, move to next week
+                    if target_booking_date < today:
+                        target_booking_date += timedelta(days=7)
+                else:
+                    target_booking_date = slot.date
 
+            # Ensure this exact slot + date combination isn't already requested by this user
             existing_request = SessionBooking.objects.filter(
                 user=request.user, 
                 slot=slot, 
@@ -629,8 +679,10 @@ def request_session_view(request, slot_id):
         return redirect('bookings:user_bookings')
 
     # Default GET fallback redirect
-    slot = get_object_or_404(ExpertAvailability, id=slot_id)
-    return redirect('bookings:expert_detail', expert_id=slot.expert.id)
+    if slot_id:
+        slot = get_object_or_404(ExpertAvailability, id=slot_id)
+        return redirect('bookings:expert_detail', expert_id=slot.expert.id)
+    return redirect('bookings:search_experts')
 
 
 @login_required

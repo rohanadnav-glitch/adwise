@@ -1,0 +1,25 @@
+availability on off button 
+
+expert feedback - user report button 
+
+
+Ranking logic :
+
+
+Rating Score: Measures the quality of past consultations based on client star feedback.
+
+Completed Sessions: Measures platform activity and popularity via total successful sessions.
+
+Professional Experience: Measures industry authority based on years of prior work history.
+
+Response Rate: Measures expert reliability and speed in accepting or declining client requests.
+
+Profile Freshness: Measures recent platform engagement and recency of expert activity.
+
+Repeat Bookings: Measures true expert value based on how many clients return for multiple sessions.
+
+
+Expert Score = (Average Rating * 20) + (Completed Sessions * 2) + (Experience Years * 4) + (Response Rate * 10) + (Recency Bonus * 10) + (Repeat Bookings * 5)
+
+
+

@@ -3,7 +3,7 @@ from django import forms
 from django.contrib.auth import get_user_model
 from decimal import Decimal
 # Import models directly, NOT views
-from .models import UserRole, ExpertProfile
+from .models import UserRole, ExpertProfile, CustomUser 
 from apps.categories.models import Category, SubCategory
 from apps.locations.models import State, District, City
 
@@ -213,6 +213,19 @@ class UserRegistrationForm(forms.ModelForm):
     class Meta:
         model = User
         fields = ['first_name', 'last_name', 'email', 'phone_number', 'state', 'district', 'city', 'password']
+
+
+class UserProfileUpdateForm(forms.ModelForm):
+    class Meta:
+        model = User  
+        fields = ['first_name', 'last_name', 'phone_number', 'date_of_birth']
+        widgets = {
+            'date_of_birth': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'first_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'last_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'phone_number': forms.TextInput(attrs={'class': 'form-control'}),
+        }
+
 
 # ==========================================
 # 2. EXPERT REGISTRATION - STEP 1 (Account Info)
@@ -525,6 +538,10 @@ class LoginForm(forms.Form):
 
 
 class ExpertProfileUpdateForm(forms.ModelForm):
+    first_name = forms.CharField(max_length=150, widget=forms.TextInput(attrs={'class': 'form-control'}))
+    last_name = forms.CharField(max_length=150, widget=forms.TextInput(attrs={'class': 'form-control'}))
+    date_of_birth = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}))
+
     hourly_rate = forms.IntegerField(
         min_value=100,
         max_value=50000,
@@ -537,19 +554,36 @@ class ExpertProfileUpdateForm(forms.ModelForm):
             'qualification', 
             'experience_years', 
             'hourly_rate', 
-            'bio'
+            'bio',
+            'profile_picture',
+            'resume',
+            'certificate',
+            'linkedin_url',
+            'instagram_url',
+            'facebook_url',
+            'whatsapp_number'
         ]
         widgets = {
             'qualification': forms.TextInput(attrs={'class': 'form-control', 'id': 'id_qualification'}),
             'experience_years': forms.NumberInput(attrs={'class': 'form-control', 'id': 'id_experience_years'}),
-            'bio': forms.Textarea(attrs={'class': 'form-control', 'rows': 4, 'id': 'id_bio'}),
+            'bio': forms.Textarea if hasattr(forms, 'Textarea') else forms.Textarea(attrs={'class': 'form-control', 'rows': 4, 'id': 'id_bio'}),
+            'resume': forms.FileInput(attrs={'class': 'form-control'}),
+            'certificate': forms.FileInput(attrs={'class': 'form-control'}),
+            'linkedin_url': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://linkedin.com/in/username'}),
+            'instagram_url': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://instagram.com/username'}),
+            'facebook_url': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://facebook.com/username'}),
+            'whatsapp_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'WhatsApp / Emergency Number'}),
+            'profile_picture': forms.FileInput(attrs={'class': 'form-control'}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Convert decimal hourly rate to integer for clean rendering without .00
         if self.instance and self.instance.hourly_rate:
             self.initial['hourly_rate'] = int(self.instance.hourly_rate)
+        if self.instance and self.instance.user:
+            self.fields['first_name'].initial = self.instance.user.first_name
+            self.fields['last_name'].initial = self.instance.user.last_name
+            self.fields['date_of_birth'].initial = self.instance.user.date_of_birth
 
     def clean_bio(self):
         bio = self.cleaned_data.get('bio', '').strip()

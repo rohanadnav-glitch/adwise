@@ -1,133 +1,396 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="row">
-    <!-- Filter Sidebar -->
-    <div class="col-md-3">
-        <div class="card shadow-sm border-0 p-3 mb-4">
-            <h5 class="fw-bold mb-3">Filter Experts</h5>
-            <form method="GET" action="{% url 'bookings:search_experts' %}">
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">Keyword</label>
-                    <input type="text" name="q" class="form-control" placeholder="Name, skill, degree..."
-                        value="{{ selected_q }}">
-                </div>
 
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">Category</label>
-                    <select name="category" id="id_category" class="form-select">
-                        <option value="">All Categories</option>
-                        {% for cat in categories %}
-                        <option value="{{ cat.id }}" {% if cat.id == selected_category %}selected{% endif %}>{{ cat.name }}
-                        </option>
-                        {% endfor %}
-                    </select>
-                </div>
+<style>
+    /* Professional SaaS Dashboard Styling */
+    body {
+        background-color: #f8fafc;
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+    .main-container {
+        max-width: 1350px;
+        margin: 2rem auto;
+        padding: 0 1.5rem;
+    }
+    
+    /* Left Filter Card - Modern Pro Look */
+    .filter-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 20px;
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.03);
+        padding: 1.75rem;
+    }
+    .filter-title {
+        font-size: 1.1rem;
+        font-weight: 800;
+        color: #0f172a;
+        letter-spacing: -0.3px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.5rem;
+        border-bottom: 2px solid #f8fafc;
+        padding-bottom: 0.85rem;
+    }
+    .filter-group {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        padding: 0.75rem 1rem;
+        margin-bottom: 1rem;
+        transition: all 0.2s ease;
+    }
+    .filter-group:hover, .filter-group:focus-within {
+        background: #ffffff;
+        border-color: #6366f1;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.08);
+    }
+    .form-label-custom {
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.6px;
+        color: #64748b;
+        text-transform: uppercase;
+        margin-bottom: 0.25rem;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+    .form-control, .form-select {
+        background: transparent;
+        border: none;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #0f172a;
+        padding: 0;
+        box-shadow: none !important;
+    }
+    .form-control:focus, .form-select:focus {
+        background: transparent;
+        color: #0f172a;
+    }
+    .btn-apply-filters {
+        background: linear-gradient(135deg, #0f172a, #1e293b);
+        border: none;
+        color: white;
+        border-radius: 14px;
+        font-weight: 600;
+        padding: 0.85rem;
+        width: 100%;
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
+        transition: all 0.2s ease;
+    }
+    .btn-apply-filters:hover {
+        background: linear-gradient(135deg, #1e293b, #334155);
+        color: white;
+        transform: translateY(-1px);
+    }
 
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">Subcategory</label>
-                    <select name="subcategory" id="id_subcategory" class="form-select">
-                        <option value="">All Subcategories</option>
-                    </select>
-                </div>
+    /* Expert Horizontal Card */
+    .expert-row-card {
+        background: #ffffff;
+        border-radius: 20px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+        padding: 1.75rem;
+        position: relative;
+        transition: all 0.25s ease;
+    }
+    .expert-row-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.06);
+        border-color: #cbd5e1;
+    }
+    
+    /* Live Status Badge */
+    .live-badge {
+        background: #22c55e;
+        color: white;
+        font-size: 0.65rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 0.25rem 0.6rem;
+        border-radius: 6px;
+    }
 
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">State</label>
-                    <select name="state" id="id_state" class="form-select">
-                        <option value="">All States</option>
-                        {% for st in states %}
-                        <option value="{{ st.id }}" {% if st.id == selected_state %}selected{% endif %}>{{ st.name }}
-                        </option>
-                        {% endfor %}
-                    </select>
-                </div>
+    /* Avatar Frame */
+    .avatar-wrapper {
+        position: relative;
+        width: 100px;
+        height: 100px;
+        border-radius: 16px;
+        border: 2px solid #22c55e;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+        flex-shrink: 0;
+    }
+    .expert-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    .expert-fallback {
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, #0f172a, #334155);
+        color: white;
+        font-size: 32px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
 
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">District</label>
-                    <select name="district" id="id_district" class="form-select">
-                        <option value="">All Districts</option>
-                    </select>
-                </div>
+    /* Pills & Badges */
+    .custom-pill {
+        background: #f1f5f9;
+        color: #475569;
+        border-radius: 8px;
+        padding: 0.3rem 0.7rem;
+        font-size: 0.78rem;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+    }
+    .professional-tag {
+        color: #4f46e5;
+        background: #eef2ff;
+        border: 1px solid #e0e7ff;
+        font-size: 0.7rem;
+        font-weight: 700;
+        padding: 0.15rem 0.6rem;
+        border-radius: 6px;
+    }
 
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">City</label>
-                    <select name="city" id="id_city" class="form-select">
-                        <option value="">All Cities</option>
-                    </select>
-                </div>
+    /* Professional Action Button */
+    .btn-schedule-slot {
+        background: #0f172a;
+        border: none;
+        color: #ffffff;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        padding: 0.75rem 1.25rem;
+        width: 100%;
+        transition: all 0.2s ease;
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
+    }
+    .btn-schedule-slot:hover {
+        background: #1e293b;
+        color: #ffffff;
+        transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(15, 23, 42, 0.25);
+    }
 
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">Max Fee (per 60m)</label>
-                    <input type="number" name="max_fee" class="form-control" placeholder="e.g. 2000"
-                        value="{{ selected_max_fee }}">
-                </div>
+    .scrollable-results {
+        max-height: 800px;
+        overflow-y: auto;
+        padding-right: 6px;
+    }
+</style>
 
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">Available Date</label>
-                    <input type="date" name="date" class="form-control" value="{{ selected_date }}">
+<div class="main-container">
+    <div class="row g-4">
+        
+        <!-- LEFT COLUMN: REFINED FILTERS SIDEBAR -->
+        <div class="col-lg-3">
+            <div class="filter-card sticky-top" style="top: 2rem;">
+                <div class="filter-title">
+                    <span><i class="fa-solid fa-filter text-primary me-2"></i> Filters</span>
+                    <a href="{% url 'bookings:search_experts' %}" class="text-decoration-none text-muted small fw-semibold" style="font-size: 0.75rem;">Reset All</a>
                 </div>
+                
+                <form method="GET" action="{% url 'bookings:search_experts' %}">
+                    
+                    <!-- Search Keyword -->
+                    <div class="filter-group">
+                        <label class="form-label-custom"><i class="fa-solid fa-magnifying-glass"></i> Search Expert</label>
+                        <input type="text" name="q" class="form-control" placeholder="Name or specialization" value="{{ selected_q }}">
+                    </div>
 
-                <button type="submit" class="btn btn-primary w-100 fw-bold">Apply Filters</button>
-                <a href="{% url 'bookings:search_experts' %}" class="btn btn-outline-secondary w-100 mt-2 btn-sm">Clear
-                    All</a>
-            </form>
+                    <!-- Category -->
+                    <div class="filter-group">
+                        <label class="form-label-custom"><i class="fa-solid fa-layer-group"></i> Category</label>
+                        <select name="category" id="id_category" class="form-select">
+                            <option value="">All Categories</option>
+                            {% for cat in categories %}
+                            <option value="{{ cat.id }}" {% if cat.id == selected_category %}selected{% endif %}>{{ cat.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Subcategory -->
+                    <div class="filter-group">
+                        <label class="form-label-custom"><i class="fa-solid fa-code-branch"></i> Subcategory</label>
+                        <select name="subcategory" id="id_subcategory" class="form-select">
+                            <option value="">All Subcategories</option>
+                        </select>
+                    </div>
+
+                    <!-- State -->
+                    <div class="filter-group">
+                        <label class="form-label-custom"><i class="fa-solid fa-map"></i> State</label>
+                        <select name="state" id="id_state" class="form-select">
+                            <option value="">All States</option>
+                            {% for st in states %}
+                            <option value="{{ st.id }}" {% if st.id == selected_state %}selected{% endif %}>{{ st.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- District -->
+                    <div class="filter-group">
+                        <label class="form-label-custom"><i class="fa-solid fa-location-crosshairs"></i> District</label>
+                        <select name="district" id="id_district" class="form-select">
+                            <option value="">All Districts</option>
+                        </select>
+                    </div>
+
+                    <!-- City -->
+                    <div class="filter-group">
+                        <label class="form-label-custom"><i class="fa-solid fa-city"></i> City</label>
+                        <select name="city" id="id_city" class="form-select">
+                            <option value="">All Cities</option>
+                        </select>
+                    </div>
+
+                    <!-- Max Fee -->
+                    <div class="filter-group">
+                        <label class="form-label-custom"><i class="fa-solid fa-indian-rupee-sign"></i> Max Fee (₹/hr)</label>
+                        <input type="number" name="max_fee" min="0" class="form-control" placeholder="e.g. 2000" value="{{ selected_max_fee }}">
+                    </div>
+
+                    <!-- Date Filter -->
+                    <div class="filter-group mb-4">
+                        <label class="form-label-custom"><i class="fa-regular fa-calendar"></i> Available Date</label>
+                        <input type="date" name="date" class="form-control text-secondary" value="{{ selected_date }}">
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button type="submit" class="btn btn-apply-filters">
+                        <i class="fa-solid fa-arrow-right-to-bracket me-2"></i> Apply Filters
+                    </button>
+                </form>
+            </div>
         </div>
-    </div>
 
-    <!-- Results Display -->
-    <div class="col-md-9">
-        <h4 class="fw-bold mb-3">Available Experts ({{ experts|length }})</h4>
-        {% if experts %}
-        <div class="row">
-            {% for expert in experts %}
-            <div class="col-md-6 mb-4">
-                <div class="card shadow-sm border-0 h-100 p-3">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <h5 class="fw-bold mb-1">{{ expert.user.get_full_name }}</h5>
-                            <div class="mb-2 d-flex flex-wrap gap-1">
-                                {% if expert.category %}
-                                <span class="badge bg-primary">{{ expert.category.name }}</span>
-                                {% endif %}
-
-                                {% for sub in expert.subcategories.all %}
-                                <span class="badge bg-info text-dark">{{ sub.name }}</span>
-                                {% empty %}
-                                {% if expert.subcategory %}
-                                <span class="badge bg-info text-dark">{{ expert.subcategory.name }}</span>
-                                {% endif %}
-                                {% endfor %}
-                            </div>
-                            <div class="mb-2">
-                                {% if expert.average_rating > 0 %}
-                                <span class="text-warning fw-bold"><i class="fa-solid fa-star"></i> {{expert.average_rating|floatformat:1}}</span>
-                                <span class="text-muted small">({{expert.total_reviews_count}} review{{expert.total_reviews_count|pluralize}})</span>
-                                {% else %}
-                                <span class="text-muted small"><i class="fa-regular fa-star"></i> New Expert (No ratings
-                                    yet)</span>
-                                {% endif %}
-                            </div>
-                        </div>
-                        <span class="badge bg-success fs-6">₹{{ expert.hourly_rate|floatformat:0 }}/hr</span>
-                    </div>
-                    <p class="text-muted small mb-2"><strong>Qualification:</strong> {{ expert.qualification }}
-                        ({{expert.experience_years}} yrs exp)</p>
-                    <p class="text-muted small mb-2"><strong>Location:</strong> {{ expert.city.name }},
-                        {{expert.state.name}}</p>
-                    <p class="card-text text-truncate">{{ expert.bio }}</p>
-                    <div class="mt-auto">
-                        <a href="{% url 'bookings:expert_detail' expert.id %}"
-                            class="btn btn-outline-primary btn-sm w-100 fw-bold">View Profile & Schedule Slot</a>
-                    </div>
+        <!-- RIGHT COLUMN: EXPERTS LISTING FEED -->
+        <div class="col-lg-9">
+            
+            <!-- Top Header & Online Counter -->
+            <div class="d-flex align-items-center justify-content-between mb-4 bg-white p-3 rounded-4 border shadow-sm">
+                <div>
+                    <h4 class="fw-bold text-dark m-0">Top Experts Online</h4>
+                    <span class="text-success small fw-bold d-flex align-items-center gap-1 mt-1">
+                        <i class="fa-solid fa-circle" style="font-size: 8px;"></i> {{ experts|length }} Online & Available
+                    </span>
                 </div>
             </div>
-            {% endfor %}
+
+            <!-- Scrollable Expert Feed Cards -->
+            <div class="scrollable-results pe-2">
+                {% if experts %}
+                <div class="d-flex flex-column gap-4">
+                    {% for expert in experts %}
+                    <div class="expert-row-card">
+                        
+                        <!-- Top Ribbon: Live Status & Professional Badge -->
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <span class="live-badge"><i class="fa-solid fa-bolt me-1"></i> Available Now</span>
+                            <span class="professional-tag"><i class="fa-solid fa-user-tie me-1"></i> Active Expert</span>
+                        </div>
+
+                        <div class="row align-items-center g-4">
+                            
+                            <!-- Left: Avatar & Basic Details -->
+                            <div class="col-lg-7 d-flex align-items-start gap-3">
+                                {% if expert.profile_picture %}
+                                    <div class="avatar-wrapper">
+                                        <img src="{{ expert.profile_picture.url }}" alt="{{ expert.user.get_full_name }}" class="expert-img">
+                                    </div>
+                                {% else %}
+                                    <div class="avatar-wrapper">
+                                        <div class="expert-fallback">
+                                            {{ expert.user.first_name|slice:":1" }}{{ expert.user.last_name|slice:":1" }}
+                                        </div>
+                                    </div>
+                                {% endif %}
+
+                                <div class="flex-grow-1">
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <h5 class="fw-bold text-dark m-0">{{ expert.user.get_full_name|default:expert.user.username }}</h5>
+                                    </div>
+
+                                    <!-- Category/Subcategory Pill -->
+                                    <div class="mb-2 d-flex flex-wrap gap-1">
+                                        {% if expert.category %}
+                                        <span class="custom-pill text-primary bg-primary bg-opacity-10">{{ expert.category.name }}</span>
+                                        {% endif %}
+                                        {% for sub in expert.subcategories.all %}
+                                        <span class="custom-pill text-info bg-info bg-opacity-10">{{ sub.name }}</span>
+                                        {% endfor %}
+                                    </div>
+
+                                    <!-- Qualification & Location -->
+                                    <p class="text-secondary small fw-medium mb-1">
+                                        <i class="fa-solid fa-graduation-cap me-1 text-muted"></i> {{ expert.qualification }} • <i class="fa-solid fa-briefcase ms-2 me-1 text-muted"></i> {{ expert.experience_years }}+ Years experience
+                                    </p>
+                                    <p class="text-muted small mb-2">
+                                        <i class="fa-solid fa-location-dot me-1 text-danger"></i> {{ expert.city.name|default:"Online" }}, {{ expert.state.name|default:"" }}
+                                    </p>
+
+                                    <!-- Rating & Reviews -->
+                                    <div class="text-warning small fw-bold d-flex align-items-center gap-1">
+                                        <i class="fa-solid fa-star"></i> 
+                                        {% if expert.average_rating > 0 %}{{ expert.average_rating|floatformat:1 }} 
+                                        <span class="text-muted fw-normal ms-1">({{ expert.total_reviews_count }} reviews)</span>
+                                        {% else %} 5.0 <span class="text-muted fw-normal ms-1">(New Expert)</span> {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Right: Pricing & Action Button -->
+                            <div class="col-lg-5 border-top border-lg-top-0 pt-3 pt-lg-0 ps-lg-4 border-lg-start">
+                                <div class="d-flex align-items-center justify-content-between mb-3">
+                                    <span class="text-muted small fw-bold text-uppercase" style="font-size: 0.7rem;">Consultation Fee</span>
+                                    <div class="text-end">
+                                        <span class="fw-bold fs-4 text-dark">₹{{ expert.hourly_rate|floatformat:0 }}</span>
+                                        <span class="text-muted small">/ 60 mins</span>
+                                    </div>
+                                </div>
+
+                                <div class="d-grid">
+                                    <a href="{% url 'bookings:expert_detail' expert.id %}" class="btn btn-schedule-slot text-center text-decoration-none">
+                                        <i class="fa-solid fa-calendar-check me-2"></i> View Profile & Schedule Slot
+                                    </a>
+                                </div>
+
+                                <!-- Availability Notice Banner -->
+                                <div class="mt-3 p-2 rounded-3 bg-success bg-opacity-10 border border-success border-opacity-25 text-success small fw-semibold text-center">
+                                    <i class="fa-regular fa-clock me-1"></i> Open Slots Available for Booking
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="filter-card text-center p-5">
+                    <div class="py-5">
+                        <i class="fa-solid fa-user-slash text-muted fa-3x mb-3 opacity-50"></i>
+                        <h5 class="fw-bold text-dark">No Experts Found Online</h5>
+                        <p class="text-muted small mb-0">Try clearing or broadening your search filters on the left panel.</p>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
         </div>
-        {% else %}
-        <div class="alert alert-warning text-center p-4">
-            <h5>No experts found matching your criteria.</h5>
-            <p class="m-0">Try clearing or broadening your search filters.</p>
-        </div>
-        {% endif %}
+
     </div>
 </div>
 
@@ -143,7 +406,6 @@
         function fetchSubcategories(categoryId, targetSubcategoryId = '') {
             if (!subcategorySelect) return;
             subcategorySelect.innerHTML = '<option value="">All Subcategories</option>';
-
             if (!categoryId) return;
 
             fetch("/categories/get-subcategories/?category_id=" + categoryId)
@@ -154,12 +416,9 @@
                         const option = document.createElement('option');
                         option.value = item.id || item.pk;
                         option.textContent = item.name || item.title;
-                        
-                        // Keep selected option selected after form submit
                         if (targetSubcategoryId && String(option.value) === String(targetSubcategoryId)) {
                             option.selected = true;
                         }
-                        
                         subcategorySelect.appendChild(option);
                     });
                 })
@@ -170,7 +429,6 @@
             categorySelect.addEventListener('change', function () {
                 fetchSubcategories(this.value);
             });
-
             if (categorySelect.value) {
                 fetchSubcategories(categorySelect.value, selectedSubcategory);
             }

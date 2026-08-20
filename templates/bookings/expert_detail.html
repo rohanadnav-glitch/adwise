@@ -152,9 +152,9 @@
                                 <!-- Hide checkbox if locked, past, or already requested -->
                                 {% if user.is_authenticated and user.role == 'USER' and not slot.my_booking_status and not slot.is_locked and not slot.is_past %}
                                 <div class="form-check ms-auto">
-                                    <input class="form-check-input slot-checkbox" type="checkbox" name="selected_slots" value="{{ slot.id }}" id="slot_chk_{{ slot.id }}" style="cursor: pointer; transform: scale(1.2);">
+                                    <input class="form-check-input slot-checkbox" type="checkbox" name="selected_slots" value="{{ slot.id }}|{{ slot.date|date:'Y-m-d' }}" id="slot_chk_{{ slot.id }}_{{ slot.date|date:'Y-m-d' }}" style="cursor: pointer; transform: scale(1.2);">
                                 </div>
-                                {% endif %}
+                                    {% endif %}
                             </div>
 
                             <p class="mb-3 text-dark fw-semibold">
@@ -188,7 +188,7 @@
                                     {% elif slot.is_past %}
                                         <button class="btn btn-secondary btn-sm w-100 fw-bold" disabled>Time Elapsed</button>
                                     {% else %}
-                                        <button type="button" class="btn btn-outline-primary btn-sm w-100 fw-bold single-request-trigger" data-slot-id="{{ slot.id }}">
+                                        <button type="button" class="btn btn-outline-primary btn-sm w-100 fw-bold single-request-trigger" data-slot-id="{{ slot.id }}_{{ slot.date|date:'Y-m-d' }}">
                                             Request This Slot
                                         </button>
                                     {% endif %}

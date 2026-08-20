@@ -52,7 +52,7 @@
                         <a href="{% url 'bookings:respond_postpone' b.id 'decline' %}" class="btn btn-outline-danger btn-sm ms-1">Decline</a> {% elif b.status == 'CONFIRMED' %} {% if b.is_past %}
                         <span class="text-muted small fw-bold">Session Completed</span> {% if b.review %}
                         <span class="badge bg-light text-dark border mt-2 d-block w-75 text-center">
-                                    <i class="fa-solid fa-star text-warning me-1"></i>Rated {{ b.review.rating }}/5
+                            <i class="fa-solid fa-star text-warning me-1"></i>Rated {{ b.review.rating }}/5
                                 </span> {% else %}
                         <a href="{% url 'bookings:submit_review' b.id %}" class="btn btn-outline-warning btn-sm fw-bold mt-2 d-block w-75">
                             <i class="fa-regular fa-star me-1"></i> Rate Expert
@@ -65,11 +65,11 @@
                             <a href="{{ b.meeting_link }}" target="_blank" class="btn btn-primary btn-sm fw-bold shadow-sm video-join-btn disabled" aria-disabled="true" style="pointer-events: none; opacity: 0.65;">
                                 <i class="fa-solid fa-video me-1"></i> Join Video Session
                             </a>
-                            {% else %}
+                        {% else %}
                             <a href="https://meet.jit.si/Adwise-Consultation-{{ b.id }}" target="_blank" class="btn btn-primary btn-sm fw-bold shadow-sm video-join-btn disabled" aria-disabled="true" style="pointer-events: none; opacity: 0.65;">
                                 <i class="fa-solid fa-video me-1"></i> Join Video Session
                             </a>
-                            {% endif %}
+                        {% endif %}
 
                             <small class="text-danger fw-bold countdown-text">
                                         Calculating...

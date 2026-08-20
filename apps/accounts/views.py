@@ -4,6 +4,7 @@ from .forms import UserRegistrationForm, ExpertStep1Form, ExpertStep2Form, Login
 from .models import CustomUser, UserRole, ExpertProfile
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db import transaction
+from django.utils import timezone
 from apps.categories.models import Category, SubCategory
 from apps.locations.models import State, District, City
 from django.contrib.auth import get_user_model, login, logout, authenticate
@@ -315,10 +316,9 @@ def expert_dashboard_view(request):
 
 
 
-
 @login_required
 def edit_expert_profile_view(request):
-    """ Allows experts to update their consultation fee, qualification, and bio """
+    """ Allows experts to update their profile, photo, documents, social links, and fee """
     if request.user.role != UserRole.EXPERT:
         messages.error(request, "Only experts can access profile settings.")
         return redirect('accounts:user_dashboard')
@@ -326,11 +326,21 @@ def edit_expert_profile_view(request):
     expert_profile = get_object_or_404(ExpertProfile, user=request.user)
 
     if request.method == 'POST':
-        form = ExpertProfileUpdateForm(request.POST, instance=expert_profile)
+        # NOTE: request.FILES is mandatory to process profile_picture, resume, and certificate
+        form = ExpertProfileUpdateForm(request.POST, request.FILES, instance=expert_profile)
         if form.is_valid():
-            form.save()
-            messages.success(request, f"Your consultation fee has been updated to ₹{expert_profile.hourly_rate}/hr!")
-            return redirect('bookings:schedule_manager')
+            expert_profile = form.save(commit=False)
+            
+            # Save base user fields handled in the form
+            request.user.first_name = form.cleaned_data.get('first_name')
+            request.user.last_name = form.cleaned_data.get('last_name')
+            request.user.date_of_birth = form.cleaned_data.get('date_of_birth')
+            request.user.save()
+            
+            expert_profile.save()
+            
+            messages.success(request, "Your expert profile and settings have been updated successfully!")
+            return redirect('accounts:expert_dashboard')
         else:
             messages.error(request, "Please fix the validation errors below.")
     else:
@@ -341,3 +351,57 @@ def edit_expert_profile_view(request):
         'expert': expert_profile,
         'expert_profile': expert_profile
     })
+
+
+
+@login_required
+@transaction.atomic
+def toggle_expert_availability_view(request):
+    """
+    Safely toggles an expert's availability status between Available and Unavailable,
+    enforcing platform precautions and terms.
+    """
+    if request.user.role != UserRole.EXPERT:
+        messages.error(request, "Access restricted to Expert accounts.")
+        return redirect('accounts:user_dashboard')
+
+    expert_profile = get_object_or_404(ExpertProfile, user=request.user)
+
+    if request.method == 'POST':
+        agreed_to_terms = request.POST.get('agree_terms') == 'on'
+        
+        # If going online, terms agreement is mandatory
+        if not expert_profile.is_available and not agreed_to_terms:
+            messages.error(request, "You must agree to the availability terms and conditions to go online.")
+            # FIXED: Used .get() for the META dictionary
+            return redirect(request.META.get('HTTP_REFERER') or 'accounts:expert_dashboard')
+
+        # PRECAUTION: Prevent going offline if there are unhandled client booking requests
+        if expert_profile.is_available:
+            from apps.bookings.models import SessionBooking, SessionStatus
+            pending_requests = SessionBooking.objects.filter(
+                expert=expert_profile,
+                status=SessionStatus.REQUESTED
+            ).exists()
+
+            if pending_requests:
+                messages.warning(
+                    request, 
+                    "Precaution Notice: You cannot go offline while you have pending client session requests. Please accept or decline them first."
+                )
+                # FIXED: Used .get() for the META dictionary
+                return redirect(request.META.get('HTTP_REFERER') or 'accounts:expert_dashboard')
+
+        # Execute Toggle
+        expert_profile.is_available = not expert_profile.is_available
+        expert_profile.availability_toggled_at = timezone.now()
+        expert_profile.save(update_fields=['is_available', 'availability_toggled_at'])
+
+        if expert_profile.is_available:
+            messages.success(request, "You are now ONLINE and ready for consultation bookings!")
+        else:
+            messages.info(request, "You are now set to OFFLINE. New clients cannot book instant slots.")
+
+    # FIXED: Used .get() for the META dictionary
+    return redirect(request.META.get('HTTP_REFERER') or 'accounts:expert_dashboard')
+
