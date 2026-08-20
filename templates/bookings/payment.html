@@ -1,5 +1,4 @@
-{% extends 'base.html' %}
-{% block content %}
+{% extends 'base.html' %} {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-6">
         <div class="card shadow-sm border-0 p-4">
@@ -20,7 +19,8 @@
                 <hr>
                 <div class="d-flex justify-content-between fs-5 fw-bold text-success">
                     <span>Total Fee:</span>
-                    <span>₹{{ booking.expert.hourly_rate }}</span>
+                    <!-- UPDATED: Displays exact per-minute calculated total amount -->
+                    <span>₹{{ total_amount }}</span>
                 </div>
             </div>
 
@@ -30,7 +30,8 @@
                     <label class="form-label fw-semibold">Card / UPI Payment Simulation</label>
                     <input type="text" class="form-control" value="4111 •••• •••• 1111 (Demo Mode)" disabled>
                 </div>
-                <button type="submit" class="btn btn-success w-100 fw-bold fs-5 py-2">Confirm & Pay ₹{{ booking.expert.hourly_rate }}</button>
+                <!-- UPDATED: Displays exact per-minute calculated total amount on the button -->
+                <button type="submit" class="btn btn-success w-100 fw-bold fs-5 py-2">Confirm & Pay ₹{{ total_amount }}</button>
             </form>
         </div>
     </div>

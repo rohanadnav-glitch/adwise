@@ -46,8 +46,14 @@
                     <td>
                         {% if b.is_past and b.status != 'CONFIRMED' %}
                         <span class="text-muted fs-7">N/A</span> {% elif b.status == 'ACCEPTED' %}
-                        <a href="{% url 'bookings:process_payment' b.id %}" class="btn btn-success btn-sm fw-bold">Pay ₹{{ b.expert.hourly_rate|floatformat:0 }} Now</a><br>
-                        <small class="text-danger">Expires in 24h</small> {% elif b.status == 'POSTPONED' %}
+
+                        <!-- UPDATED PAYMENT BUTTON -->
+                        <a href="{% url 'bookings:process_payment' b.id %}" class="btn btn-success btn-sm fw-bold">Pay ₹{{ b.calculated_total }} </a><br>
+                        <!-- <small class="text-muted d-block mt-1">For {{ b.slot.start_time|time:"g:i A" }} to {{ b.slot.end_time|time:"g:i A" }}</small> -->
+                        <small class="text-danger">Expires in 24h</small>
+                        <!-- END UPDATED PAYMENT BUTTON -->
+
+                        {% elif b.status == 'POSTPONED' %}
                         <a href="{% url 'bookings:respond_postpone' b.id 'accept' %}" class="btn btn-success btn-sm fw-bold">Accept New Time</a>
                         <a href="{% url 'bookings:respond_postpone' b.id 'decline' %}" class="btn btn-outline-danger btn-sm ms-1">Decline</a> {% elif b.status == 'CONFIRMED' %} {% if b.is_past %}
                         <span class="text-muted small fw-bold">Session Completed</span> {% if b.review %}
@@ -65,11 +71,11 @@
                             <a href="{{ b.meeting_link }}" target="_blank" class="btn btn-primary btn-sm fw-bold shadow-sm video-join-btn disabled" aria-disabled="true" style="pointer-events: none; opacity: 0.65;">
                                 <i class="fa-solid fa-video me-1"></i> Join Video Session
                             </a>
-                        {% else %}
+                            {% else %}
                             <a href="https://meet.jit.si/Adwise-Consultation-{{ b.id }}" target="_blank" class="btn btn-primary btn-sm fw-bold shadow-sm video-join-btn disabled" aria-disabled="true" style="pointer-events: none; opacity: 0.65;">
                                 <i class="fa-solid fa-video me-1"></i> Join Video Session
                             </a>
-                        {% endif %}
+                            {% endif %}
 
                             <small class="text-danger fw-bold countdown-text">
                                         Calculating...

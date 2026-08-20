@@ -33,19 +33,6 @@ def create_notification(user, title, message):
 # 2. EXPERT SCHEDULE MANAGEMENT & CALENDAR
 # ==========================================
 
-
-
-
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-from django.utils import timezone
-from django.db.models import Q
-from datetime import datetime, date, timedelta
-from apps.accounts.models import UserRole, ExpertProfile
-from .models import ExpertAvailability
-
-
 @login_required
 def schedule_manager_view(request):
     """ Allows experts to set availability via explicit Start Time & End Time with flexible minute-chunking """
@@ -352,9 +339,12 @@ def search_experts_view(request):
     if city_id and city_id.isdigit():
         raw_experts = raw_experts.filter(city_id=city_id)
 
+    # UPDATED: Per-minute filter conversion
     if max_fee:
         try:
-            raw_experts = raw_experts.filter(hourly_rate__lte=float(max_fee))
+            max_per_minute = float(max_fee)
+            max_hourly_equivalent = max_per_minute * 60 
+            raw_experts = raw_experts.filter(hourly_rate__lte=max_hourly_equivalent)
         except ValueError:
             pass
 
@@ -399,9 +389,6 @@ def search_experts_view(request):
         'selected_date': selected_date,
     }
     return render(request, 'bookings/search_results.html', context)
-
-
-
 
 
 @login_required
@@ -582,7 +569,19 @@ def process_payment_view(request, booking_id):
         messages.success(request, "Payment successful! Your consultation session is now confirmed.")
         return redirect('bookings:user_bookings')
 
-    return render(request, 'bookings/payment.html', {'booking': booking})
+    # UPDATED: Calculate exact per-minute amount for the checkout template
+    start_dt = datetime.combine(date.today(), booking.slot.start_time)
+    end_dt = datetime.combine(date.today(), booking.slot.end_time)
+    
+    duration_minutes = (end_dt - start_dt).total_seconds() / 60
+    per_minute_rate = float(booking.expert.hourly_rate) / 60
+    
+    total_amount = int(round(duration_minutes * per_minute_rate))
+
+    return render(request, 'bookings/payment.html', {
+        'booking': booking,
+        'total_amount': total_amount
+    })
 
 
 # ==========================================
@@ -835,7 +834,6 @@ def user_bookings_view(request):
 
     bookings = SessionBooking.objects.filter(user=request.user).select_related('expert__user', 'slot')
     
-    # FIX: Use local machine time instead of UTC to match your saved slots
     from datetime import datetime
     now = datetime.now()
     today = now.date()
@@ -844,12 +842,25 @@ def user_bookings_view(request):
     # Determine if the session is completely over to unlock the review feature
     for b in bookings:
         session_date = b.proposed_date or (b.slot.date if (b.slot and b.slot.date) else None)
+        # UPDATED: Added extraction of start_time to use in our math
+        start_time = b.proposed_start_time or (b.slot.start_time if b.slot else None)
         end_time = b.proposed_end_time or (b.slot.end_time if b.slot else None)
 
         if session_date and end_time:
             b.is_past = (session_date < today) or (session_date == today and end_time <= current_time)
         else:
             b.is_past = False
+
+        # UPDATED: Calculate exact per-minute amount for the 'Pay Now' button
+        if session_date and start_time and end_time and b.status == SessionStatus.ACCEPTED:
+            start_dt = datetime.combine(session_date, start_time)
+            end_dt = datetime.combine(session_date, end_time)
+            
+            duration_minutes = (end_dt - start_dt).total_seconds() / 60
+            hourly_rate = float(b.expert.hourly_rate)
+            per_minute_rate = hourly_rate / 60
+            
+            b.calculated_total = int(round(duration_minutes * per_minute_rate))
 
     return render(request, 'bookings/user_bookings.html', {
         'bookings': bookings,
