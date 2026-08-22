@@ -33,19 +33,6 @@ def create_notification(user, title, message):
 # 2. EXPERT SCHEDULE MANAGEMENT & CALENDAR
 # ==========================================
 
-
-
-
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-from django.utils import timezone
-from django.db.models import Q
-from datetime import datetime, date, timedelta
-from apps.accounts.models import UserRole, ExpertProfile
-from .models import ExpertAvailability
-
-
 @login_required
 def schedule_manager_view(request):
     """ Allows experts to set availability via explicit Start Time & End Time with flexible minute-chunking """
@@ -358,11 +345,25 @@ def search_experts_view(request):
         except ValueError:
             pass
 
-    if selected_date:
-        raw_experts = raw_experts.filter(
-            availabilities__date=selected_date,
-            availabilities__is_booked=False
-        ).distinct()
+    # 5. PROFESSIONAL DATE FILTER LOGIC
+    parsed_date = None
+    if selected_date and selected_date != 'None':
+        try:
+            # Convert string to Date object
+            search_date = datetime.strptime(selected_date, '%Y-%m-%d').date()
+            target_dow = search_date.weekday() # 0 = Monday, 6 = Sunday
+            parsed_date = search_date
+
+            # Filter for either a specific unbooked date OR a recurring unbooked day_of_week
+            raw_experts = raw_experts.filter(
+                Q(availabilities__is_booked=False) &
+                (
+                    Q(availabilities__date=search_date) |
+                    Q(availabilities__is_recurring=True, availabilities__day_of_week=target_dow)
+                )
+            ).distinct()
+        except ValueError:
+            pass
 
     today = timezone.now().date()
 
@@ -397,11 +398,9 @@ def search_experts_view(request):
         'selected_city': int(city_id) if city_id and city_id.isdigit() else '',
         'selected_max_fee': max_fee,
         'selected_date': selected_date,
+        'parsed_date': parsed_date,
     }
     return render(request, 'bookings/search_results.html', context)
-
-
-
 
 
 @login_required

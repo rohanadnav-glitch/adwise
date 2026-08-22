@@ -2,128 +2,289 @@
 {% block content %}
 
 <style>
-    /* Professional SaaS Dashboard Styling */
+    /* Ambient Background */
     body {
-        background-color: #f8fafc;
+        background: #f8fafc;
         font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        position: relative;
+        z-index: 0;
     }
+    body::before {
+        content: '';
+        position: fixed;
+        top: -10%; left: -5%; width: 50vw; height: 50vw;
+        background: radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, transparent 70%);
+        z-index: -1;
+    }
+    body::after {
+        content: '';
+        position: fixed;
+        bottom: -10%; right: -5%; width: 50vw; height: 50vw;
+        background: radial-gradient(circle, rgba(124, 58, 237, 0.06) 0%, transparent 70%);
+        z-index: -1;
+    }
+
     .main-container {
-        max-width: 1350px;
+        max-width: 1150px;
         margin: 2rem auto;
         padding: 0 1.5rem;
     }
-    
-    /* Left Filter Card - Modern Pro Look */
-    .filter-card {
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
-        border-radius: 20px;
-        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.03);
-        padding: 1.75rem;
-    }
-    .filter-title {
-        font-size: 1.1rem;
-        font-weight: 800;
-        color: #0f172a;
-        letter-spacing: -0.3px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
+
+    /* =========================================
+       ROUNDED STICKY BANNER BAR (COMPACT UX)
+       ========================================= */
+    .sticky-filter-header {
+        position: sticky;
+        top: 75px;
+        z-index: 1020;
+        background: rgba(255, 255, 255, 0.92);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(226, 232, 240, 0.8);
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+        border-radius: 16px;
+        padding: 0.6rem 1rem; /* Tighter container padding */
         margin-bottom: 1.5rem;
-        border-bottom: 2px solid #f8fafc;
-        padding-bottom: 0.85rem;
     }
-    .filter-group {
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
-        border-radius: 14px;
-        padding: 0.75rem 1rem;
-        margin-bottom: 1rem;
-        transition: all 0.2s ease;
-    }
-    .filter-group:hover, .filter-group:focus-within {
-        background: #ffffff;
-        border-color: #6366f1;
-        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.08);
-    }
-    .form-label-custom {
-        font-size: 0.68rem;
+
+    .filter-trigger-btn {
+        background-color: #ffffff;
+        border: 1px solid #cbd5e1;
+        border-radius: 50rem;
+        padding: 0.35rem 1rem; /* Compact padding */
+        font-size: 0.8rem; /* Smaller, sleeker font */
         font-weight: 700;
-        letter-spacing: 0.6px;
-        color: #64748b;
+        color: #334155;
+        transition: all 0.2s ease;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+    .filter-trigger-btn:hover {
+        border-color: var(--adwise-primary, #6366f1);
+        color: var(--adwise-primary, #6366f1);
+        box-shadow: 0 4px 15px rgba(99, 102, 241, 0.1);
+        background-color: #ffffff;
+    }
+
+    .filter-pill {
+        appearance: none;
+        background-color: rgba(255, 255, 255, 0.9);
+        border: 1px solid #cbd5e1;
+        border-radius: 50rem;
+        padding: 0.35rem 1.8rem 0.35rem 0.9rem; /* Compact padding */
+        font-size: 0.8rem; /* Smaller font */
+        font-weight: 600;
+        color: #334155;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23334155' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 0.6rem center;
+        background-size: 12px 10px;
+        transition: all 0.2s ease;
+        backdrop-filter: blur(10px);
+        cursor: pointer;
+        
+        max-width: 140px; /* Tighter max width to prevent container blowout */
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        overflow: hidden;
+    }
+    .filter-pill:hover:not(:disabled), .filter-pill:focus:not(:disabled) {
+        border-color: var(--adwise-primary, #6366f1);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        outline: none;
+        background-color: #ffffff;
+        color: var(--adwise-primary, #6366f1);
+    }
+    .filter-pill:disabled {
+        cursor: not-allowed;
+        background-color: #f1f5f9;
+        border-color: #e2e8f0;
+    }
+
+    .filter-pill.active-filter, .filter-pill-input.active-filter {
+        background: rgba(99, 102, 241, 0.08) !important;
+        border-color: var(--adwise-primary, #6366f1) !important;
+        color: var(--adwise-primary, #6366f1) !important;
+        font-weight: 700;
+    }
+    
+    .filter-pill-input {
+        background-color: rgba(255, 255, 255, 0.9);
+        border: 1px solid #cbd5e1;
+        border-radius: 50rem;
+        padding: 0.35rem 0.9rem; /* Compact padding */
+        font-size: 0.8rem; /* Smaller font */
+        font-weight: 600;
+        color: #334155;
+        transition: all 0.2s ease;
+        backdrop-filter: blur(10px);
+        outline: none;
+    }
+    .filter-pill-input:hover, .filter-pill-input:focus {
+        border-color: var(--adwise-primary, #6366f1);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        background-color: #ffffff;
+    }
+
+    .quick-filters-scroll {
+        display: flex;
+        flex-wrap: nowrap; 
+        gap: 0.5rem; /* Tighter gap */
+        align-items: center;
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+    .quick-filters-scroll::-webkit-scrollbar {
+        display: none;
+    }
+
+    /* =========================================
+       OFFCANVAS SIDE DRAWER UI
+       ========================================= */
+    .custom-offcanvas {
+        border-left: none;
+        box-shadow: -10px 0 40px rgba(15, 23, 42, 0.1);
+        width: 380px !important;
+    }
+    .offcanvas-header {
+        background: #ffffff;
+        padding: 1.25rem 1.5rem;
+    }
+    .offcanvas-title {
+        font-size: 1.15rem;
+        letter-spacing: -0.3px;
+        color: #0f172a;
+    }
+    .offcanvas-body {
+        background: #f8fafc;
+        padding: 1.5rem;
+    }
+    .offcanvas-footer {
+        background: #ffffff;
+        padding: 1.25rem 1.5rem;
+        border-top: 1px solid #e2e8f0;
+        position: sticky;
+        bottom: 0;
+        z-index: 10;
+        box-shadow: 0 -4px 20px rgba(0,0,0,0.03);
+    }
+    
+    .filter-section {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        padding: 1.25rem;
+        margin-bottom: 1.25rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.01);
+    }
+    .filter-section-title {
+        font-size: 0.8rem;
+        font-weight: 800;
+        color: #475569;
         text-transform: uppercase;
-        margin-bottom: 0.25rem;
+        letter-spacing: 0.8px;
+        margin-bottom: 1rem;
         display: flex;
         align-items: center;
         gap: 0.4rem;
     }
-    .form-control, .form-select {
-        background: transparent;
-        border: none;
-        font-size: 0.875rem;
+
+    .drawer-select, .drawer-input {
+        background: #f8fafc;
+        border: 1px solid #cbd5e1;
+        font-size: 0.9rem;
         font-weight: 600;
-        color: #0f172a;
-        padding: 0;
+        color: var(--adwise-dark, #0f172a);
+        border-radius: 10px;
+        padding: 0.6rem 1rem;
         box-shadow: none !important;
+        transition: all 0.2s;
+        width: 100%;
     }
-    .form-control:focus, .form-select:focus {
-        background: transparent;
-        color: #0f172a;
+    .drawer-select:focus:not(:disabled), .drawer-input:focus:not(:disabled) {
+        background: #ffffff;
+        border-color: var(--adwise-primary, #6366f1);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1) !important;
+        outline: none;
     }
-    .btn-apply-filters {
-        background: linear-gradient(135deg, #0f172a, #1e293b);
-        border: none;
+    .drawer-select:disabled {
+        background-color: #f1f5f9;
+        color: #94a3b8;
+        cursor: not-allowed;
+    }
+
+    .btn-brand-solid {
+        background: var(--adwise-primary, #6366f1);
         color: white;
-        border-radius: 14px;
-        font-weight: 600;
+        border: none;
+        border-radius: 10px;
+        font-weight: 700;
         padding: 0.85rem;
         width: 100%;
-        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
         transition: all 0.2s ease;
     }
-    .btn-apply-filters:hover {
-        background: linear-gradient(135deg, #1e293b, #334155);
-        color: white;
+    .btn-brand-solid:hover {
+        background: #4f46e5;
         transform: translateY(-1px);
+        box-shadow: 0 6px 15px rgba(99, 102, 241, 0.3);
+        color: white;
     }
 
-    /* Expert Horizontal Card */
-    .expert-row-card {
-        background: #ffffff;
+    /* =========================================
+       EXPERT CARDS
+       ========================================= */
+    .glass-card {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(25px);
+        -webkit-backdrop-filter: blur(25px);
+        border: 1px solid rgba(255, 255, 255, 0.9);
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
         border-radius: 20px;
-        border: 1px solid #e2e8f0;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+    }
+    .expert-row-card {
         padding: 1.75rem;
         position: relative;
-        transition: all 0.25s ease;
+        transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        margin-bottom: 1.25rem;
     }
     .expert-row-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.06);
-        border-color: #cbd5e1;
+        transform: translateY(-4px);
+        box-shadow: 0 20px 40px rgba(15, 23, 42, 0.08);
+        border-color: rgba(255, 255, 255, 1);
+        background: rgba(255, 255, 255, 0.85);
     }
     
-    /* Live Status Badge */
     .live-badge {
-        background: #22c55e;
+        background: linear-gradient(135deg, #22c55e, #16a34a);
         color: white;
         font-size: 0.65rem;
-        font-weight: 700;
+        font-weight: 800;
         text-transform: uppercase;
         letter-spacing: 0.5px;
-        padding: 0.25rem 0.6rem;
-        border-radius: 6px;
+        padding: 0.3rem 0.75rem;
+        border-radius: 50rem;
+        box-shadow: 0 4px 10px rgba(34, 197, 94, 0.2);
+    }
+    .professional-tag {
+        color: #475569;
+        background: rgba(241, 245, 249, 0.8);
+        border: 1px solid rgba(226, 232, 240, 0.8);
+        font-size: 0.7rem;
+        font-weight: 700;
+        padding: 0.25rem 0.75rem;
+        border-radius: 50rem;
     }
 
-    /* Avatar Frame */
     .avatar-wrapper {
         position: relative;
-        width: 100px;
-        height: 100px;
-        border-radius: 16px;
-        border: 2px solid #22c55e;
+        width: 90px;
+        height: 90px;
+        border-radius: 20px;
+        border: 3px solid #ffffff;
         overflow: hidden;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.08);
         flex-shrink: 0;
     }
     .expert-img {
@@ -134,263 +295,314 @@
     .expert-fallback {
         width: 100%;
         height: 100%;
-        background: linear-gradient(135deg, #0f172a, #334155);
+        background: var(--adwise-gradient, linear-gradient(135deg, #7c3aed, #6366f1));
         color: white;
         font-size: 32px;
-        font-weight: 700;
+        font-weight: 800;
         display: flex;
         align-items: center;
         justify-content: center;
     }
 
-    /* Pills & Badges */
     .custom-pill {
-        background: #f1f5f9;
-        color: #475569;
-        border-radius: 8px;
-        padding: 0.3rem 0.7rem;
-        font-size: 0.78rem;
-        font-weight: 600;
+        background: rgba(99, 102, 241, 0.08);
+        color: var(--adwise-primary, #6366f1);
+        border: 1px solid rgba(99, 102, 241, 0.15);
+        border-radius: 50rem;
+        padding: 0.35rem 0.85rem;
+        font-size: 0.75rem;
+        font-weight: 700;
         display: inline-flex;
         align-items: center;
         gap: 0.3rem;
     }
-    .professional-tag {
-        color: #4f46e5;
-        background: #eef2ff;
-        border: 1px solid #e0e7ff;
-        font-size: 0.7rem;
-        font-weight: 700;
-        padding: 0.15rem 0.6rem;
-        border-radius: 6px;
-    }
 
-    /* Professional Action Button */
     .btn-schedule-slot {
-        background: #0f172a;
-        border: none;
+        background: var(--adwise-gradient, linear-gradient(135deg, #7c3aed, #6366f1));
         color: #ffffff;
-        border-radius: 12px;
-        font-weight: 600;
+        border: none;
+        border-radius: 50rem;
+        font-weight: 700;
         font-size: 0.9rem;
         padding: 0.75rem 1.25rem;
         width: 100%;
-        transition: all 0.2s ease;
-        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
+        transition: all 0.3s ease;
+        box-shadow: 0 6px 16px rgba(99, 102, 241, 0.3);
     }
     .btn-schedule-slot:hover {
-        background: #1e293b;
+        background: linear-gradient(135deg, #6d28d9, #4f46e5);
         color: #ffffff;
-        transform: translateY(-1px);
-        box-shadow: 0 6px 16px rgba(15, 23, 42, 0.25);
-    }
-
-    .scrollable-results {
-        max-height: 800px;
-        overflow-y: auto;
-        padding-right: 6px;
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(99, 102, 241, 0.4);
     }
 </style>
 
 <div class="main-container">
-    <div class="row g-4">
-        
-        <!-- LEFT COLUMN: REFINED FILTERS SIDEBAR -->
-        <div class="col-lg-3">
-            <div class="filter-card sticky-top" style="top: 2rem;">
-                <div class="filter-title">
-                    <span><i class="fa-solid fa-filter text-primary me-2"></i> Filters</span>
-                    <a href="{% url 'bookings:search_experts' %}" class="text-decoration-none text-muted small fw-semibold" style="font-size: 0.75rem;">Reset All</a>
-                </div>
-                
-                <form method="GET" action="{% url 'bookings:search_experts' %}">
-                    
-                    <!-- Search Keyword -->
-                    <div class="filter-group">
-                        <label class="form-label-custom"><i class="fa-solid fa-magnifying-glass"></i> Search Expert</label>
-                        <input type="text" name="q" class="form-control" placeholder="Name or specialization" value="{{ selected_q }}">
-                    </div>
+    
+    <!-- NON-STICKY TITLE -->
+    <div class="mb-3 mt-2">
+        <h3 class="fw-bold text-dark m-0" style="letter-spacing: -0.5px;">Explore Experts</h3>
+    </div>
 
-                    <!-- Category -->
-                    <div class="filter-group">
-                        <label class="form-label-custom"><i class="fa-solid fa-layer-group"></i> Category</label>
-                        <select name="category" id="id_category" class="form-select">
-                            <option value="">All Categories</option>
-                            {% for cat in categories %}
-                            <option value="{{ cat.id }}" {% if cat.id == selected_category %}selected{% endif %}>{{ cat.name }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-
-                    <!-- Subcategory -->
-                    <div class="filter-group">
-                        <label class="form-label-custom"><i class="fa-solid fa-code-branch"></i> Subcategory</label>
-                        <select name="subcategory" id="id_subcategory" class="form-select">
-                            <option value="">All Subcategories</option>
-                        </select>
-                    </div>
-
-                    <!-- State -->
-                    <div class="filter-group">
-                        <label class="form-label-custom"><i class="fa-solid fa-map"></i> State</label>
-                        <select name="state" id="id_state" class="form-select">
-                            <option value="">All States</option>
-                            {% for st in states %}
-                            <option value="{{ st.id }}" {% if st.id == selected_state %}selected{% endif %}>{{ st.name }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-
-                    <!-- District -->
-                    <div class="filter-group">
-                        <label class="form-label-custom"><i class="fa-solid fa-location-crosshairs"></i> District</label>
-                        <select name="district" id="id_district" class="form-select">
-                            <option value="">All Districts</option>
-                        </select>
-                    </div>
-
-                    <!-- City -->
-                    <div class="filter-group">
-                        <label class="form-label-custom"><i class="fa-solid fa-city"></i> City</label>
-                        <select name="city" id="id_city" class="form-select">
-                            <option value="">All Cities</option>
-                        </select>
-                    </div>
-
-                    <!-- Max Fee -->
-                    <div class="filter-group">
-                        <label class="form-label-custom"><i class="fa-solid fa-indian-rupee-sign"></i> Max Fee (₹/hr)</label>
-                        <input type="number" name="max_fee" min="0" class="form-control" placeholder="e.g. 2000" value="{{ selected_max_fee }}">
-                    </div>
-
-                    <!-- Date Filter -->
-                    <div class="filter-group mb-4">
-                        <label class="form-label-custom"><i class="fa-regular fa-calendar"></i> Available Date</label>
-                        <input type="date" name="date" class="form-control text-secondary" value="{{ selected_date }}">
-                    </div>
-
-                    <!-- Submit Button -->
-                    <button type="submit" class="btn btn-apply-filters">
-                        <i class="fa-solid fa-arrow-right-to-bracket me-2"></i> Apply Filters
-                    </button>
-                </form>
-            </div>
-        </div>
-
-        <!-- RIGHT COLUMN: EXPERTS LISTING FEED -->
-        <div class="col-lg-9">
+    <!-- ROUNDED STICKY BANNER BAR -->
+    <div class="sticky-filter-header">
+        <div class="quick-filters-scroll">
             
-            <!-- Top Header & Online Counter -->
-            <div class="d-flex align-items-center justify-content-between mb-4 bg-white p-3 rounded-4 border shadow-sm">
-                <div>
-                    <h4 class="fw-bold text-dark m-0">Top Experts Online</h4>
-                    <span class="text-success small fw-bold d-flex align-items-center gap-1 mt-1">
-                        <i class="fa-solid fa-circle" style="font-size: 8px;"></i> {{ experts|length }} Online & Available
-                    </span>
-                </div>
-            </div>
+            <button class="filter-trigger-btn flex-shrink-0" type="button" data-bs-toggle="offcanvas" data-bs-target="#filtersDrawer" aria-controls="filtersDrawer">
+                <i class="fa-solid fa-sliders text-primary"></i> Filter & Sort
+            </button>
 
-            <!-- Scrollable Expert Feed Cards -->
-            <div class="scrollable-results pe-2">
-                {% if experts %}
-                <div class="d-flex flex-column gap-4">
-                    {% for expert in experts %}
-                    <div class="expert-row-card">
-                        
-                        <!-- Top Ribbon: Live Status & Professional Badge -->
-                        <div class="d-flex align-items-center justify-content-between mb-3">
-                            <span class="live-badge"><i class="fa-solid fa-bolt me-1"></i> Available Now</span>
-                            <span class="professional-tag"><i class="fa-solid fa-user-tie me-1"></i> Active Expert</span>
-                        </div>
+            <div class="vr mx-2 bg-secondary opacity-25 flex-shrink-0" style="height: 25px;"></div>
 
-                        <div class="row align-items-center g-4">
-                            
-                            <!-- Left: Avatar & Basic Details -->
-                            <div class="col-lg-7 d-flex align-items-start gap-3">
-                                {% if expert.profile_picture %}
-                                    <div class="avatar-wrapper">
-                                        <img src="{{ expert.profile_picture.url }}" alt="{{ expert.user.get_full_name }}" class="expert-img">
-                                    </div>
-                                {% else %}
-                                    <div class="avatar-wrapper">
-                                        <div class="expert-fallback">
-                                            {{ expert.user.first_name|slice:":1" }}{{ expert.user.last_name|slice:":1" }}
-                                        </div>
-                                    </div>
-                                {% endif %}
+            <form method="GET" action="{% url 'bookings:search_experts' %}" class="d-flex flex-nowrap gap-2 align-items-center m-0 w-100 pe-3">
+                
+                <input type="hidden" name="q" value="{{ request.GET.q|default:'' }}">
 
-                                <div class="flex-grow-1">
-                                    <div class="d-flex align-items-center gap-2 mb-1">
-                                        <h5 class="fw-bold text-dark m-0">{{ expert.user.get_full_name|default:expert.user.username }}</h5>
-                                    </div>
-
-                                    <!-- Category/Subcategory Pill -->
-                                    <div class="mb-2 d-flex flex-wrap gap-1">
-                                        {% if expert.category %}
-                                        <span class="custom-pill text-primary bg-primary bg-opacity-10">{{ expert.category.name }}</span>
-                                        {% endif %}
-                                        {% for sub in expert.subcategories.all %}
-                                        <span class="custom-pill text-info bg-info bg-opacity-10">{{ sub.name }}</span>
-                                        {% endfor %}
-                                    </div>
-
-                                    <!-- Qualification & Location -->
-                                    <p class="text-secondary small fw-medium mb-1">
-                                        <i class="fa-solid fa-graduation-cap me-1 text-muted"></i> {{ expert.qualification }} • <i class="fa-solid fa-briefcase ms-2 me-1 text-muted"></i> {{ expert.experience_years }}+ Years experience
-                                    </p>
-                                    <p class="text-muted small mb-2">
-                                        <i class="fa-solid fa-location-dot me-1 text-danger"></i> {{ expert.city.name|default:"Online" }}, {{ expert.state.name|default:"" }}
-                                    </p>
-
-                                    <!-- Rating & Reviews -->
-                                    <div class="text-warning small fw-bold d-flex align-items-center gap-1">
-                                        <i class="fa-solid fa-star"></i> 
-                                        {% if expert.average_rating > 0 %}{{ expert.average_rating|floatformat:1 }} 
-                                        <span class="text-muted fw-normal ms-1">({{ expert.total_reviews_count }} reviews)</span>
-                                        {% else %} 5.0 <span class="text-muted fw-normal ms-1">(New Expert)</span> {% endif %}
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Right: Pricing & Action Button -->
-                            <div class="col-lg-5 border-top border-lg-top-0 pt-3 pt-lg-0 ps-lg-4 border-lg-start">
-                                <div class="d-flex align-items-center justify-content-between mb-3">
-                                    <span class="text-muted small fw-bold text-uppercase" style="font-size: 0.7rem;">Consultation Fee</span>
-                                    <div class="text-end">
-                                        <span class="fw-bold fs-4 text-dark">₹{{ expert.hourly_rate|floatformat:0 }}</span>
-                                        <span class="text-muted small">/ 60 mins</span>
-                                    </div>
-                                </div>
-
-                                <div class="d-grid">
-                                    <a href="{% url 'bookings:expert_detail' expert.id %}" class="btn btn-schedule-slot text-center text-decoration-none">
-                                        <i class="fa-solid fa-calendar-check me-2"></i> View Profile & Schedule Slot
-                                    </a>
-                                </div>
-
-                                <!-- Availability Notice Banner -->
-                                <div class="mt-3 p-2 rounded-3 bg-success bg-opacity-10 border border-success border-opacity-25 text-success small fw-semibold text-center">
-                                    <i class="fa-regular fa-clock me-1"></i> Open Slots Available for Booking
-                                </div>
-                            </div>
-
-                        </div>
-                    </div>
+                <!-- Category -->
+                <select name="category" id="id_category_quick" class="filter-pill flex-shrink-0 {% if selected_category %}active-filter{% endif %}" onchange="this.form.submit()">
+                    <option value="">Category</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat.id }}" {% if cat.id == selected_category %}selected{% endif %}>{{ cat.name }}</option>
                     {% endfor %}
-                </div>
-                {% else %}
-                <div class="filter-card text-center p-5">
-                    <div class="py-5">
-                        <i class="fa-solid fa-user-slash text-muted fa-3x mb-3 opacity-50"></i>
-                        <h5 class="fw-bold text-dark">No Experts Found Online</h5>
-                        <p class="text-muted small mb-0">Try clearing or broadening your search filters on the left panel.</p>
-                    </div>
-                </div>
+                </select>
+
+                <!-- Subcategory (Skill) - Shortened Placeholder -->
+                <select name="subcategory" id="id_subcategory_quick" class="filter-pill flex-shrink-0 {% if selected_subcategory %}active-filter{% endif %}" onchange="this.form.submit()" {% if not selected_category %}disabled style="opacity: 0.6;"{% endif %}>
+                    <option value="">{% if not selected_category %}Select Skill{% else %}Skill / Subcategory{% endif %}</option>
+                </select>
+
+                <!-- State -->
+                <select name="state" id="id_state_quick" class="filter-pill flex-shrink-0 {% if selected_state %}active-filter{% endif %}" onchange="this.form.submit()">
+                    <option value="">State</option>
+                    {% for st in states %}
+                    <option value="{{ st.id }}" {% if st.id == selected_state %}selected{% endif %}>{{ st.name }}</option>
+                    {% endfor %}
+                </select>
+
+                <!-- Max Fee -->
+                <select name="max_fee" id="id_max_fee_quick" class="filter-pill flex-shrink-0 {% if selected_max_fee %}active-filter{% endif %}" onchange="this.form.submit()">
+                    <option value="">Max Fee</option>
+                    <option value="500" {% if selected_max_fee == '500' %}selected{% endif %}>Under ₹500 /hr</option>
+                    <option value="1000" {% if selected_max_fee == '1000' %}selected{% endif %}>Under ₹1,000 /hr</option>
+                    <option value="2000" {% if selected_max_fee == '2000' %}selected{% endif %}>Under ₹2,000 /hr</option>
+                    <option value="5000" {% if selected_max_fee == '5000' %}selected{% endif %}>Under ₹5,000 /hr</option>
+                </select>
+
+                <!-- Date - Shortened Placeholder -->
+                <input 
+                    type="{% if selected_date and selected_date != 'None' %}date{% else %}text{% endif %}" 
+                    placeholder="Available Date" 
+                    min="{% now 'Y-m-d' %}"
+                    onfocus="(this.type='date')" 
+                    onblur="(this.value === '' ? this.type='text' : this.type='date')" 
+                    onchange="this.form.submit()"
+                    name="date" 
+                    class="filter-pill-input text-secondary flex-shrink-0 {% if selected_date and selected_date != 'None' %}active-filter{% endif %}" 
+                    {% if selected_date and selected_date != 'None' %}value="{{ selected_date }}"{% endif %} 
+                    style="width: 125px; cursor: pointer;"
+                >
+
+                <!-- Conditional Clear All Button -->
+                {% if selected_category or selected_subcategory or selected_state or selected_max_fee or selected_date %}
+                <a href="{% url 'bookings:search_experts' %}" class="text-danger fw-bold ms-auto flex-shrink-0 text-decoration-none" style="font-size: 0.8rem; white-space: nowrap;">Clear all</a>
                 {% endif %}
+            </form>
+        </div>
+    </div>
+
+    <!-- LIVE RESULTS COUNT -->
+    <div class="d-flex align-items-center mb-3 px-1">
+        <span class="text-success small fw-bold d-flex align-items-center gap-2">
+            <span class="spinner-grow spinner-grow-sm text-success" style="width: 10px; height: 10px;" role="status"></span>
+            {{ experts|length }} Experts Available Online
+        </span>
+    </div>
+
+    <!-- EXPERTS LISTING FEED -->
+    <div>
+        {% if experts %}
+            {% for expert in experts %}
+            <div class="glass-card expert-row-card">
+                
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <span class="live-badge"><i class="fa-solid fa-video me-1"></i> Available Now</span>
+                    <span class="professional-tag"><i class="fa-solid fa-certificate text-primary me-1"></i> Active Expert</span>
+                </div>
+
+                <div class="row align-items-center g-4">
+                    
+                    <div class="col-lg-7 d-flex align-items-start gap-4">
+                        {% if expert.profile_picture %}
+                            <div class="avatar-wrapper">
+                                <img src="{{ expert.profile_picture.url }}" alt="{{ expert.user.get_full_name }}" class="expert-img">
+                            </div>
+                        {% else %}
+                            <div class="avatar-wrapper">
+                                <div class="expert-fallback">
+                                    {{ expert.user.first_name|slice:":1" }}{{ expert.user.last_name|slice:":1" }}
+                                </div>
+                            </div>
+                        {% endif %}
+
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                <h4 class="fw-bold text-dark m-0 text-capitalize" style="letter-spacing: -0.5px;">{{ expert.user.get_full_name|default:expert.user.username }}</h4>
+                            </div>
+
+                            <div class="mb-3 d-flex flex-wrap gap-2">
+                                {% if expert.category %}
+                                <span class="custom-pill"><i class="fa-solid fa-layer-group opacity-50"></i> {{ expert.category.name }}</span>
+                                {% endif %}
+                                {% for sub in expert.subcategories.all %}
+                                <span class="custom-pill text-info" style="color: #0ea5e9 !important; background: rgba(14, 165, 233, 0.08); border-color: rgba(14, 165, 233, 0.15);">{{ sub.name }}</span>
+                                {% endfor %}
+                            </div>
+
+                            <p class="text-secondary small fw-semibold mb-1 d-flex align-items-center gap-2">
+                                <span><i class="fa-solid fa-graduation-cap text-primary opacity-75"></i> {{ expert.qualification }}</span>
+                                <span class="text-muted">•</span>
+                                <span><i class="fa-solid fa-briefcase text-primary opacity-75"></i> {{ expert.experience_years }}+ Yrs</span>
+                            </p>
+                            <p class="text-muted small fw-medium mb-3">
+                                <i class="fa-solid fa-location-dot text-danger opacity-75 me-1"></i> {{ expert.city.name|default:"Online" }}, {{ expert.state.name|default:"" }}
+                            </p>
+
+                            <div class="small fw-bold d-flex align-items-center gap-1" style="color: #f59e0b;">
+                                <i class="fa-solid fa-star"></i> 
+                                {% if expert.average_rating > 0 %}
+                                    <span class="text-dark">{{ expert.average_rating|floatformat:1 }}</span> 
+                                    <span class="text-muted fw-medium ms-1">({{ expert.total_reviews_count }} reviews)</span>
+                                {% else %} 
+                                    <span class="text-dark">5.0</span> <span class="text-muted fw-medium ms-1">(New Expert)</span> 
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-5 border-top border-lg-top-0 pt-4 pt-lg-0 ps-lg-4 border-lg-start" style="border-color: rgba(226, 232, 240, 0.6) !important;">
+                        <div class="d-flex align-items-center justify-content-between mb-4">
+                            <span class="text-muted small fw-bold text-uppercase tracking-wider" style="font-size: 0.7rem; letter-spacing: 1px;">Consultation Fee</span>
+                            <div class="text-end">
+                                <span class="fw-black fs-3 text-dark" style="font-weight: 900; letter-spacing: -1px;">₹{{ expert.hourly_rate|floatformat:0 }}</span>
+                                <span class="text-muted small fw-medium">/ hr</span>
+                            </div>
+                        </div>
+
+                        <div class="d-grid mb-3">
+                            <a href="{% url 'bookings:expert_detail' expert.id %}" class="btn btn-schedule-slot text-center text-decoration-none">
+                                View Profile & Schedule <i class="fa-solid fa-arrow-right ms-2 fs-7"></i>
+                            </a>
+                        </div>
+
+                        <div class="p-2 rounded-pill bg-success bg-opacity-10 border border-success border-opacity-25 text-success small fw-bold text-center" style="font-size: 0.75rem;">
+                            <i class="fa-regular fa-calendar-check me-1"></i> 
+                            {% if parsed_date %}
+                                Available on {{ parsed_date|date:"M j" }}
+                            {% else %}
+                                Slots available
+                            {% endif %}
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+        <div class="glass-card text-center p-5 mt-4">
+            <div class="py-5">
+                <div class="brand-icon-box mx-auto mb-4" style="width: 70px; height: 70px; border-radius: 20px; font-size: 24px; background: #e2e8f0; color: #94a3b8; box-shadow: none;">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                </div>
+                <h4 class="fw-bold text-dark">No Experts Found Online</h4>
+                <p class="text-muted mb-0">Try clearing or broadening your search filters to find more results.</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+
+<!-- =========================================
+     SLIDE-OUT FILTER DRAWER (OFFCANVAS)
+     ========================================= -->
+<div class="offcanvas offcanvas-end custom-offcanvas" tabindex="-1" id="filtersDrawer" aria-labelledby="filtersDrawerLabel">
+    <div class="offcanvas-header border-bottom">
+        <h5 class="offcanvas-title fw-bold" id="filtersDrawerLabel"><i class="fa-solid fa-sliders text-primary me-2"></i>Filter & Sort</h5>
+        <button type="button" class="btn-close shadow-none" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    
+    <div class="offcanvas-body">
+        <form id="expertFilterFormDrawer" method="GET" action="{% url 'bookings:search_experts' %}">
+            
+            <input type="hidden" name="q" value="{{ request.GET.q|default:'' }}">
+
+            <div class="filter-section">
+                <div class="filter-section-title"><i class="fa-solid fa-layer-group text-primary"></i> Expertise Area</div>
+                <select name="category" id="id_category_drawer" class="form-select drawer-select mb-3">
+                    <option value="">All Categories</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat.id }}" {% if cat.id == selected_category %}selected{% endif %}>{{ cat.name }}</option>
+                    {% endfor %}
+                </select>
+                
+                <select name="subcategory" id="id_subcategory_drawer" class="form-select drawer-select" {% if not selected_category %}disabled{% endif %}>
+                    <option value="">{% if not selected_category %}Select Skill{% else %}All Subcategories{% endif %}</option>
+                </select>
             </div>
 
-        </div>
+            <div class="filter-section">
+                <div class="filter-section-title"><i class="fa-solid fa-map-location-dot text-primary"></i> Location</div>
+                <select name="state" id="id_state_drawer" class="form-select drawer-select mb-3">
+                    <option value="">All States</option>
+                    {% for st in states %}
+                    <option value="{{ st.id }}" {% if st.id == selected_state %}selected{% endif %}>{{ st.name }}</option>
+                    {% endfor %}
+                </select>
 
+                <select name="district" id="id_district_drawer" class="form-select drawer-select mb-3" {% if not selected_state %}disabled{% endif %}>
+                    <option value="">{% if not selected_state %}Select State First{% else %}All Districts{% endif %}</option>
+                </select>
+
+                <select name="city" id="id_city_drawer" class="form-select drawer-select" {% if not selected_district %}disabled{% endif %}>
+                    <option value="">{% if not selected_district %}Select District First{% else %}All Cities{% endif %}</option>
+                </select>
+            </div>
+
+            <div class="filter-section">
+                <div class="filter-section-title"><i class="fa-solid fa-indian-rupee-sign text-primary"></i> Budget & Time</div>
+                
+                <label class="small fw-bold text-muted mb-1">Maximum Hourly Rate</label>
+                <select name="max_fee" class="form-select drawer-select mb-3">
+                    <option value="">Any Budget</option>
+                    <option value="500" {% if selected_max_fee == '500' %}selected{% endif %}>Under ₹500 /hr</option>
+                    <option value="1000" {% if selected_max_fee == '1000' %}selected{% endif %}>Under ₹1,000 /hr</option>
+                    <option value="2000" {% if selected_max_fee == '2000' %}selected{% endif %}>Under ₹2,000 /hr</option>
+                    <option value="5000" {% if selected_max_fee == '5000' %}selected{% endif %}>Under ₹5,000 /hr</option>
+                </select>
+
+                <label class="small fw-bold text-muted mb-1">Available On</label>
+                <input 
+                    type="{% if selected_date and selected_date != 'None' %}date{% else %}text{% endif %}" 
+                    placeholder="Select a date..." 
+                    min="{% now 'Y-m-d' %}"
+                    onfocus="(this.type='date')" 
+                    onblur="(this.value === '' ? this.type='text' : this.type='date')" 
+                    name="date" 
+                    class="form-control drawer-input" 
+                    {% if selected_date and selected_date != 'None' %}value="{{ selected_date }}"{% endif %}
+                >
+            </div>
+            
+        </form>
+    </div>
+
+    <div class="offcanvas-footer">
+        <button type="submit" form="expertFilterFormDrawer" class="btn btn-brand-solid mb-2">
+            Show Results
+        </button>
+        <a href="{% url 'bookings:search_experts' %}" class="btn btn-light w-100 fw-bold border" style="color: #475569;">
+            Clear all
+        </a>
     </div>
 </div>
 
@@ -399,92 +611,186 @@
 {% block extra_js %}
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        const categorySelect = document.getElementById('id_category');
-        const subcategorySelect = document.getElementById('id_subcategory');
         const selectedSubcategory = "{{ selected_subcategory }}";
+        const selectedDistrict = "{{ selected_district }}";
+        const selectedCity = "{{ selected_city }}";
 
-        function fetchSubcategories(categoryId, targetSubcategoryId = '') {
-            if (!subcategorySelect) return;
-            subcategorySelect.innerHTML = '<option value="">All Subcategories</option>';
-            if (!categoryId) return;
+        function initializeDynamicDropdowns(prefix) {
+            const categorySelect = document.getElementById('id_category' + prefix);
+            const subcategorySelect = document.getElementById('id_subcategory' + prefix);
+            const stateSelect = document.getElementById('id_state' + prefix);
+            const districtSelect = document.getElementById('id_district' + prefix);
+            const citySelect = document.getElementById('id_city' + prefix);
 
-            fetch("/categories/get-subcategories/?category_id=" + categoryId)
-                .then(res => res.json())
-                .then(data => {
-                    const list = Array.isArray(data) ? data : (data.subcategories || data.results || []);
-                    list.forEach(item => {
-                        const option = document.createElement('option');
-                        option.value = item.id || item.pk;
-                        option.textContent = item.name || item.title;
-                        if (targetSubcategoryId && String(option.value) === String(targetSubcategoryId)) {
-                            option.selected = true;
+            const isDrawer = prefix === '_drawer';
+
+            // 1. CATEGORY -> SUBCATEGORY LOGIC
+            function fetchSubcategories(categoryId, targetSubcategoryId = '') {
+                if (!subcategorySelect) return;
+                
+                if (!categoryId) {
+                    subcategorySelect.innerHTML = `<option value="">Select Skill</option>`;
+                    subcategorySelect.disabled = true;
+                    subcategorySelect.style.opacity = '0.6';
+                    return;
+                }
+
+                subcategorySelect.innerHTML = '<option value="">Loading...</option>';
+                subcategorySelect.disabled = true;
+
+                fetch("/categories/get-subcategories/?category_id=" + categoryId)
+                    .then(res => res.json())
+                    .then(data => {
+                        const list = Array.isArray(data) ? data : (data.subcategories || data.results || []);
+                        subcategorySelect.innerHTML = `<option value="">${isDrawer ? 'All Subcategories' : 'Skill / Subcategory'}</option>`;
+                        
+                        if (list.length > 0) {
+                            list.forEach(item => {
+                                const option = document.createElement('option');
+                                option.value = item.id || item.pk;
+                                option.textContent = item.name || item.title;
+                                if (targetSubcategoryId && String(option.value) === String(targetSubcategoryId)) {
+                                    option.selected = true;
+                                }
+                                subcategorySelect.appendChild(option);
+                            });
+                            subcategorySelect.disabled = false;
+                            subcategorySelect.style.opacity = '1';
+                        } else {
+                            subcategorySelect.innerHTML = `<option value="">No skills available</option>`;
+                            subcategorySelect.disabled = true;
+                            subcategorySelect.style.opacity = '0.6';
                         }
-                        subcategorySelect.appendChild(option);
-                    });
-                })
-                .catch(err => console.error('Error loading subcategories:', err));
-        }
+                    })
+                    .catch(err => console.error('Error loading subcategories:', err));
+            }
 
-        if (categorySelect && subcategorySelect) {
-            categorySelect.addEventListener('change', function () {
-                fetchSubcategories(this.value);
-            });
-            if (categorySelect.value) {
-                fetchSubcategories(categorySelect.value, selectedSubcategory);
+            if (categorySelect && subcategorySelect) {
+                categorySelect.addEventListener('change', function () {
+                    fetchSubcategories(this.value);
+                    if (!isDrawer) categorySelect.form.submit();
+                });
+                if (categorySelect.value) {
+                    fetchSubcategories(categorySelect.value, selectedSubcategory);
+                } else {
+                    subcategorySelect.style.opacity = '0.6';
+                }
+            }
+
+            // 2. STATE -> DISTRICT LOGIC
+            function fetchDistricts(stateId, targetDistrictId = '', targetCityId = '') {
+                if (!districtSelect) return;
+                
+                if (!stateId) {
+                    districtSelect.innerHTML = `<option value="">Select State First</option>`;
+                    districtSelect.disabled = true;
+                    districtSelect.style.opacity = '0.6';
+                    if (citySelect) {
+                        citySelect.innerHTML = `<option value="">Select District First</option>`;
+                        citySelect.disabled = true;
+                        citySelect.style.opacity = '0.6';
+                    }
+                    return;
+                }
+
+                districtSelect.innerHTML = '<option value="">Loading...</option>';
+                districtSelect.disabled = true;
+
+                fetch("{% url 'locations:get_districts' %}?state_id=" + stateId)
+                    .then(res => res.json())
+                    .then(data => {
+                        const list = data.districts || [];
+                        districtSelect.innerHTML = `<option value="">${isDrawer ? 'All Districts' : 'District'}</option>`;
+                        
+                        if (list.length > 0) {
+                            list.forEach(item => {
+                                const option = document.createElement('option');
+                                option.value = item.id;
+                                option.textContent = item.name;
+                                if (targetDistrictId && String(option.value) === String(targetDistrictId)) {
+                                    option.selected = true;
+                                }
+                                districtSelect.appendChild(option);
+                            });
+                            districtSelect.disabled = false;
+                            districtSelect.style.opacity = '1';
+                            
+                            if (targetDistrictId) {
+                                fetchCities(targetDistrictId, targetCityId);
+                            }
+                        } else {
+                            districtSelect.innerHTML = `<option value="">No districts available</option>`;
+                            districtSelect.disabled = true;
+                            districtSelect.style.opacity = '0.6';
+                        }
+                    })
+                    .catch(err => console.error('Error loading districts:', err));
+            }
+
+            if (stateSelect && districtSelect) {
+                stateSelect.addEventListener('change', function () {
+                    fetchDistricts(this.value);
+                    if (!isDrawer) stateSelect.form.submit();
+                });
+                if (stateSelect.value) {
+                    fetchDistricts(stateSelect.value, selectedDistrict, selectedCity);
+                } else {
+                    districtSelect.style.opacity = '0.6';
+                    if(citySelect) citySelect.style.opacity = '0.6';
+                }
+            }
+
+            // 3. DISTRICT -> CITY LOGIC
+            function fetchCities(districtId, targetCityId = '') {
+                if (!citySelect) return;
+
+                if (!districtId) {
+                    citySelect.innerHTML = `<option value="">Select District First</option>`;
+                    citySelect.disabled = true;
+                    citySelect.style.opacity = '0.6';
+                    return;
+                }
+
+                citySelect.innerHTML = '<option value="">Loading...</option>';
+                citySelect.disabled = true;
+
+                fetch("{% url 'locations:get_cities' %}?district_id=" + districtId)
+                    .then(res => res.json())
+                    .then(data => {
+                        const list = data.cities || [];
+                        citySelect.innerHTML = `<option value="">${isDrawer ? 'All Cities' : 'City'}</option>`;
+                        
+                        if (list.length > 0) {
+                            list.forEach(item => {
+                                const option = document.createElement('option');
+                                option.value = item.id;
+                                option.textContent = item.name;
+                                if (targetCityId && String(option.value) === String(targetCityId)) {
+                                    option.selected = true;
+                                }
+                                citySelect.appendChild(option);
+                            });
+                            citySelect.disabled = false;
+                            citySelect.style.opacity = '1';
+                        } else {
+                            citySelect.innerHTML = `<option value="">No cities available</option>`;
+                            citySelect.disabled = true;
+                            citySelect.style.opacity = '0.6';
+                        }
+                    })
+                    .catch(err => console.error('Error loading cities:', err));
+            }
+
+            if (districtSelect && citySelect) {
+                districtSelect.addEventListener('change', function () {
+                    fetchCities(this.value);
+                    if (!isDrawer) districtSelect.form.submit();
+                });
             }
         }
 
-        // State -> District -> City Cascading Dropdowns
-        const stateSelect = document.getElementById('id_state');
-        const districtSelect = document.getElementById('id_district');
-        const citySelect = document.getElementById('id_city');
-
-        if (stateSelect && districtSelect) {
-            stateSelect.addEventListener('change', function () {
-                const stateId = this.value;
-                districtSelect.innerHTML = '<option value="">All Districts</option>';
-                if (citySelect) citySelect.innerHTML = '<option value="">All Cities</option>';
-
-                if (stateId) {
-                    fetch("{% url 'locations:get_districts' %}?state_id=" + stateId)
-                        .then(res => res.json())
-                        .then(data => {
-                            if (data.districts) {
-                                data.districts.forEach(item => {
-                                    const option = document.createElement('option');
-                                    option.value = item.id;
-                                    option.textContent = item.name;
-                                    districtSelect.appendChild(option);
-                                });
-                            }
-                        })
-                        .catch(err => console.error('Error loading districts:', err));
-                }
-            });
-        }
-
-        if (districtSelect && citySelect) {
-            districtSelect.addEventListener('change', function () {
-                const districtId = this.value;
-                citySelect.innerHTML = '<option value="">All Cities</option>';
-
-                if (districtId) {
-                    fetch("{% url 'locations:get_cities' %}?district_id=" + districtId)
-                        .then(res => res.json())
-                        .then(data => {
-                            if (data.cities) {
-                                data.cities.forEach(item => {
-                                    const option = document.createElement('option');
-                                    option.value = item.id;
-                                    option.textContent = item.name;
-                                    citySelect.appendChild(option);
-                                });
-                            }
-                        })
-                        .catch(err => console.error('Error loading cities:', err));
-                }
-            });
-        }
+        initializeDynamicDropdowns('_quick');   
+        initializeDynamicDropdowns('_drawer');  
     });
 </script>
 {% endblock %}

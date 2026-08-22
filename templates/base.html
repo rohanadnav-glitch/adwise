@@ -81,38 +81,60 @@
             transform: translateY(-1px);
         }
 
-        /* Functional Navbar Quick Search Form */
+        /* =========================================
+           COURSERA-STYLE GLOBAL SEARCH BAR
+           ========================================= */
+        .global-search-form {
+            flex-grow: 1;
+            max-width: 500px;
+            margin: 0 2rem;
+        }
         .navbar-search-wrapper {
             background: #f8fafc;
-            border: 1px solid #e2e8f0;
+            border: 1px solid #cbd5e1;
             border-radius: 50rem;
-            padding: 0.3rem 0.9rem;
+            padding: 0.25rem 0.25rem 0.25rem 1.25rem;
             display: flex;
             align-items: center;
-            gap: 0.6rem;
             transition: all 0.2s ease;
-            width: 240px;
+            width: 100%;
         }
-
         .navbar-search-wrapper:focus-within {
             background: #ffffff;
             border-color: var(--adwise-primary);
-            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.08);
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.1);
         }
-
         .navbar-search-input {
             background: transparent;
             border: none;
             outline: none;
-            font-size: 0.85rem;
+            font-size: 0.9rem;
             font-weight: 500;
             color: var(--adwise-dark);
             width: 100%;
             box-shadow: none !important;
         }
-
         .navbar-search-input::placeholder {
             color: #94a3b8;
+        }
+        .navbar-search-btn {
+            background: var(--adwise-primary);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+            margin-left: 10px;
+        }
+        .navbar-search-btn:hover {
+            background: #4f46e5;
+            transform: scale(1.05);
+            box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
         }
 
         .notification-btn {
@@ -188,12 +210,12 @@
             <!-- Format-safe Brand Logo -->
             {% if user.is_authenticated %}
                 {% if user.role == 'EXPERT' %}
-                    <a class="navbar-brand d-flex align-items-center gap-2" href="{% url 'accounts:expert_dashboard' %}">
+                    <a class="navbar-brand d-flex align-items-center gap-2 me-4" href="{% url 'accounts:expert_dashboard' %}">
                 {% else %}
-                    <a class="navbar-brand d-flex align-items-center gap-2" href="{% url 'accounts:user_dashboard' %}">
+                    <a class="navbar-brand d-flex align-items-center gap-2 me-4" href="{% url 'accounts:user_dashboard' %}">
                 {% endif %}
             {% else %}
-                <a class="navbar-brand d-flex align-items-center gap-2" href="{% url 'home' %}">
+                <a class="navbar-brand d-flex align-items-center gap-2 me-4" href="{% url 'home' %}">
             {% endif %}
                 <div class="brand-icon-box">
                     <i class="fa-solid fa-graduation-cap"></i>
@@ -206,82 +228,81 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
 
-            <div class="collapse navbar-collapse justify-content-between" id="navbarNav">
+            <!-- FLEX ALIGNMENT: Left Links -> Center Search -> Right Profile -->
+            <div class="collapse navbar-collapse d-lg-flex align-items-center" id="navbarNav">
 
-                <!-- Center Navigation Links -->
-                <ul class="navbar-nav mx-auto mb-2 mb-lg-0 align-items-center gap-1">
+                <!-- 1. Left Navigation Links (Grouped Together) -->
+                <ul class="navbar-nav mb-2 mb-lg-0 align-items-center gap-1 me-lg-4">
                     {% if user.is_authenticated %}
                         {% if user.role == 'USER' %}
-                        <!-- Working Navbar Quick Search Form -->
-                        <li class="nav-item me-2 d-none d-xl-block">
-                            <form method="GET" action="{% url 'bookings:search_experts' %}" class="navbar-search-wrapper">
-                                <i class="fa-solid fa-magnifying-glass text-muted small"></i>
-                                <input type="text" name="q" class="navbar-search-input" placeholder="Quick search..." value="{{ request.GET.q }}">
-                            </form>
-                        </li>
                         <li class="nav-item">
                             <a class="nav-link nav-pill-link {% if request.resolver_match.url_name == 'user_dashboard' %}active{% endif %}"
                                 href="{% url 'accounts:user_dashboard' %}">
-                                <i class="fa-solid fa-house me-1"></i> Dashboard
+                                Dashboard
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link nav-pill-link {% if request.resolver_match.url_name == 'search_experts' %}active{% endif %}"
                                 href="{% url 'bookings:search_experts' %}">
-                                <i class="fa-solid fa-magnifying-glass me-1"></i> Find Experts
+                                Find Experts
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link nav-pill-link {% if request.resolver_match.url_name == 'user_bookings' %}active{% endif %}"
                                 href="{% url 'bookings:user_bookings' %}">
-                                <i class="fa-solid fa-calendar-check me-1"></i> My Bookings
+                                My Bookings
                             </a>
                         </li>
                         {% elif user.role == 'EXPERT' %}
                         <li class="nav-item">
                             <a class="nav-link nav-pill-link {% if request.resolver_match.url_name == 'expert_dashboard' %}active{% endif %}"
                                 href="{% url 'accounts:expert_dashboard' %}">
-                                <i class="fa-solid fa-house me-1"></i> Dashboard
+                                Dashboard
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link nav-pill-link {% if request.resolver_match.url_name == 'schedule_manager' %}active{% endif %}"
                                 href="{% url 'bookings:schedule_manager' %}">
-                                <i class="fa-solid fa-clock me-1"></i> Schedule Availability
+                                Schedule
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link nav-pill-link {% if request.resolver_match.url_name == 'expert_requests' %}active{% endif %}"
                                 href="{% url 'bookings:expert_requests' %}">
-                                <i class="fa-solid fa-list-check me-1"></i> Client Requests
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link nav-pill-link {% if request.resolver_match.url_name == 'edit_expert_profile' %}active{% endif %}"
-                                href="{% url 'accounts:edit_expert_profile' %}">
-                                <i class="fa-solid fa-gear me-1"></i> Rates & Profile
+                                Client Requests
                             </a>
                         </li>
                         {% endif %}
                     {% endif %}
                 </ul>
 
-                <!-- Right Actions: Notifications & User Profile -->
-                <div class="d-flex align-items-center gap-3">
+                <!-- 2. Global Center Search Bar (Stands alone in the middle) -->
+                {% if user.is_authenticated and user.role == 'USER' %}
+                <form method="GET" action="{% url 'bookings:search_experts' %}" class="global-search-form mx-auto d-none d-lg-block" style="flex-grow: 1; max-width: 450px;">
+                    <div class="navbar-search-wrapper w-100">
+                        <input type="text" name="q" class="navbar-search-input" placeholder="Search experts or skills..." value="{{ request.GET.q }}">
+                        <button type="submit" class="navbar-search-btn">
+                            <i class="fa-solid fa-magnifying-glass small"></i>
+                        </button>
+                    </div>
+                </form>
+                {% else %}
+                <div class="mx-auto"></div>
+                {% endif %}
+
+                <!-- 3. Right Actions: Notifications & User Profile -->
+                <div class="d-flex align-items-center gap-3 ms-auto">
                     {% if user.is_authenticated %}
 
                     <!-- Interactive Expert Status Toggle Form -->
                     {% if user.role == 'EXPERT' and user.expert_profile %}
-                    
                     <form method="POST" action="{% url 'accounts:toggle_availability' %}" id="availabilityToggleForm" class="d-inline">
                         {% csrf_token %}
                         {% if user.expert_profile.is_available %}
-                        <!-- CHANGED: Now this is a type="button" that triggers the Offline Modal -->
                         <button type="button" class="btn btn-sm text-white rounded-pill px-3 py-2 fw-semibold d-none d-md-inline-flex align-items-center gap-1 shadow-sm" style="background-color: #16a34a;" data-bs-toggle="modal" data-bs-target="#goOfflineModal" title="Click to set status to Offline">
                             <i class="fa-solid fa-circle text-white" style="font-size: 6px;"></i> Ready for Consultations
                         </button>
                         {% else %}
-                        <!-- This button targets the Go Online modal -->
                         <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-2 fw-semibold d-none d-md-inline-flex align-items-center gap-1 bg-light text-muted" data-bs-toggle="modal" data-bs-target="#termsModal" title="Click to go Online">
                             <i class="fa-solid fa-circle text-secondary" style="font-size: 6px;"></i> Paused (Go Online)
                         </button>
@@ -335,8 +356,8 @@
                         <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 p-2 mt-3" aria-labelledby="userDropdown" style="border-radius: 20px; min-width: 220px;">
                             {% if user.role == 'EXPERT' and user.expert_profile %}
                             <li>
-                                <a class="dropdown-item rounded-3 py-2 small fw-semibold text-dark" href="{% url 'bookings:expert_detail' user.expert_profile.id %}">
-                                    <i class="fa-solid fa-circle-user text-primary me-2"></i> View Public Profile
+                                <a class="dropdown-item rounded-3 py-2 small fw-semibold text-dark" href="{% url 'accounts:edit_expert_profile' %}">
+                                    <i class="fa-solid fa-gear text-primary me-2"></i> Rates & Profile
                                 </a>
                             </li>
                             <li><hr class="dropdown-divider my-1"></li>
@@ -435,7 +456,7 @@
         </div>
     </div>
 
-    <!-- NEW Modal 2: Going OFFLINE Confirmation -->
+    <!-- Modal 2: Going OFFLINE Confirmation -->
     <div class="modal fade" id="goOfflineModal" tabindex="-1" aria-labelledby="goOfflineModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
