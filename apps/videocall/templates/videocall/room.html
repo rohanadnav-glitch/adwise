@@ -42,18 +42,37 @@
 </div>
 
 <!-- Safe JSON injections from Django context -->
-{{ room_name|json_script:"room-name" }} {{ consultant_name|json_script:"consultant-name" }} {{ client_name|json_script:"client-name" }}
+{{ room_name|json_script:"room-name" }} {{ consultant_name|json_script:"consultant-name" }} {{ client_name|json_script:"client-name" }} {{ request.user.get_full_name|json_script:"current-user-name" }}
 
 <script>
     const roomName = JSON.parse(document.getElementById('room-name').textContent);
+
+    // --- PREVENT MULTIPLE TABS / WINDOWS FOR THE SAME ROOM ---
+    const sessionKey = `adwise_active_call_${roomName}`;
+    if (localStorage.getItem(sessionKey)) {
+        alert("You already have this video consultation open in another tab or window. Please close this tab.");
+        window.location.href = "/";
+    } else {
+        localStorage.setItem(sessionKey, "active");
+        window.addEventListener('beforeunload', () => {
+            localStorage.removeItem(sessionKey);
+        });
+    }
+    // ---------------------------------------------------------
+
     const consultantName = JSON.parse(document.getElementById('consultant-name').textContent);
     const clientName = JSON.parse(document.getElementById('client-name').textContent);
+    const currentUserName = JSON.parse(document.getElementById('current-user-name').textContent);
 
-    // Set labels on screen dynamically
+    // Set local label to "You"
     document.getElementById('localNameLabel').textContent = "You";
 
-    // Display the consultant name on the main remote feed screen overlay
-    document.getElementById('remoteNameLabel').textContent = consultantName;
+    // Dynamically show the OTHER person's name on the main screen
+    if (currentUserName.trim() === consultantName.trim()) {
+        document.getElementById('remoteNameLabel').textContent = clientName;
+    } else {
+        document.getElementById('remoteNameLabel').textContent = consultantName;
+    }
 
     const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
     const signalingSocket = new WebSocket(`${wsScheme}://${window.location.host}/ws/call/${roomName}/`);
@@ -72,15 +91,28 @@
     // Auto-start camera on page load
     window.onload = async() => {
         try {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                alert("Your browser does not support audio/video streaming.");
+                return;
+            }
+
             localStream = await navigator.mediaDevices.getUserMedia({
                 video: true,
                 audio: true
             });
+
             localVideo.srcObject = localStream;
             await localVideo.play().catch(e => console.log("Local video play error:", e));
+
         } catch (error) {
-            console.error("Camera/Mic access denied.", error);
-            alert("Please allow camera and microphone access to join the call.");
+            console.error("Camera/Mic access failed:", error);
+            if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+                alert("No camera or microphone was detected on your system. Please connect a webcam.");
+            } else if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+                alert("Camera and microphone permission was denied. Please allow access in your browser settings.");
+            } else {
+                alert("Could not open your camera or microphone: " + error.message);
+            }
         }
     };
 
@@ -167,6 +199,7 @@
     document.getElementById('endCallButton').onclick = () => {
         if (localStream) localStream.getTracks().forEach(track => track.stop());
         if (peerConnection) peerConnection.close();
+        localStorage.removeItem(sessionKey); // Clean up storage on end call
         window.close();
         setTimeout(() => {
             window.location.href = "/";
