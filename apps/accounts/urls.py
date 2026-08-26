@@ -20,6 +20,7 @@ urlpatterns = [
     path('expert/profile/edit/', views.edit_expert_profile_view, name='edit_expert_profile'),
     path('expert/edit-profile/', views.edit_expert_profile_view, name='edit_expert_profile'),
     path('expert/toggle-availability/', views.toggle_expert_availability_view, name='toggle_availability'),
-    
+    path('expert/certificate/delete/<int:cert_id>/', views.delete_certificate, name='delete_certificate'),
+    path('expert/resume/delete/', views.delete_resume, name='delete_resume'),
     
 ]

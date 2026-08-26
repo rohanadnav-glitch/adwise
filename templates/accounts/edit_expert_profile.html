@@ -1,185 +1,208 @@
-{% extends 'base.html' %}
-
-{% block title %}Edit Profile & Professional Details - Adwise{% endblock %}
-
-{% block content %}
+{% extends 'base.html' %} {% block title %}Edit Profile & Professional Details - Adwise{% endblock %} {% block content %}
 <div class="row justify-content-center py-4">
     <div class="col-md-8">
         <div class="card shadow-sm border-0 p-4">
+            <!-- Header Section -->
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h3 class="fw-bold m-0"><i class="fa-solid fa-user-pen text-primary me-2"></i>Edit Profile & Details</h3>
                 <a href="{% url 'bookings:schedule_manager' %}" class="btn btn-outline-secondary btn-sm">&larr; Back to Schedule</a>
             </div>
-            
-            <p class="text-muted small mb-4">Update your profile picture, personal credentials, social profiles, certificates, resume, and consultation fees.</p>
 
-            <!-- IMPORTANT: enctype="multipart/form-data" is required for image and document uploads -->
+            <!-- Subtitle message (Automatically hidden when 100% complete) -->
+            <p id="profile-instruction-text" class="text-muted small mb-3 {% if expert_profile.profile_completion_score == 100 %}d-none{% endif %}">
+                Update your profile picture, personal credentials, social profiles, certificates, resume, and consultation fees.
+            </p>
+
+            <!-- Dynamic Profile Completion Widget -->
+            <div class="card bg-light border-0 p-3 mb-4 shadow-sm" id="profile-data-card" data-has-pic="{% if expert_profile.profile_picture %}true{% else %}false{% endif %}" data-has-resume="{% if expert_profile.resume %}true{% else %}false{% endif %}" data-has-cert="{% if expert_profile.certificates.exists or expert_profile.certificate %}true{% else %}false{% endif %}"
+                data-initial-score="{{ expert_profile.profile_completion_score|default:0 }}">
+
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="fw-bold text-dark">
+                        <i class="fa-solid fa-chart-pie text-primary me-1"></i> Profile Completion:
+                    </span>
+                    <span id="completion-text" class="fw-bold fs-6">
+                        {{ expert_profile.profile_completion_score|default:0 }}% Complete
+                    </span>
+                </div>
+
+                <div class="progress" style="height: 10px;">
+                    <div id="completion-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-primary" role="progressbar" aria-valuemin="0" aria-valuemax="100">
+                    </div>
+                </div>
+
+                <div id="verified-badge-container" class="mt-3"></div>
+            </div>
+
+            <!-- Form Start -->
             <form method="POST" enctype="multipart/form-data">
-                {% csrf_token %}
-
-                {% if form.errors %}
+                {% csrf_token %} {% if messages %} {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show py-2 mb-3 small" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                {% endfor %} {% endif %} {% if form.errors %}
                 <div class="alert alert-danger py-2 mb-3">
                     <strong class="d-block mb-1">Please correct the following errors:</strong>
                     <ul class="mb-0 ps-3 small">
-                        {% for field, errors in form.errors.items %}
-                            {% for error in errors %}
-                                <li><strong>{{ field|capfirst }}:</strong> {{ error }}</li>
-                            {% endfor %}
-                        {% endfor %}
+                        {% for field, errors in form.errors.items %} {% for error in errors %}
+                        <li><strong>{{ field|capfirst }}:</strong> {{ error }}</li>
+                        {% endfor %} {% endfor %}
                     </ul>
                 </div>
                 {% endif %}
-                
-                <!-- PERSONAL DETAILS SECTION -->
+
+                <!-- 1. PERSONAL INFORMATION -->
                 <h5 class="fw-bold text-secondary mb-3 border-bottom pb-2">Personal Information</h5>
-                
-                <!-- Profile Picture Field -->
-                <div class="mb-3 card bg-light border-0 p-3">
-                    <label class="form-label fw-semibold text-dark mb-2">
-                        <i class="fa-solid fa-camera text-primary me-1"></i> Profile Picture
-                    </label>
-                    <div class="d-flex align-items-center gap-3">
+
+                <!-- Modern Interactive Profile Picture Section -->
+                <div class="d-flex flex-column align-items-center mb-4 py-2">
+                    <div class="position-relative d-inline-block">
+                        <!-- Hidden Real File Input -->
+                        <input type="file" name="profile_picture" id="id_profile_picture" class="d-none" accept="image/png, image/jpeg, image/jpg">
+
+                        <!-- Avatar Image / Initials -->
                         {% if expert_profile.profile_picture %}
-                            <img src="{{ expert_profile.profile_picture.url }}" alt="Profile Photo" class="rounded-circle shadow-sm border" style="width: 70px; height: 70px; object-fit: cover;">
-                        {% else %}
-                            <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center fw-bold shadow-sm" style="width: 70px; height: 70px; font-size: 24px;">
-                                {{ expert_profile.user.first_name|slice:":1" }}{{ expert_profile.user.last_name|slice:":1" }}
-                            </div>
-                        {% endif %}
-                        <div class="flex-grow-1">
-                            {{ form.profile_picture }}
-                            <small class="text-muted d-block mt-1">Upload a professional headshot (JPG, PNG).</small>
+                        <img id="avatar-preview-img" src="{{ expert_profile.profile_picture.url }}" alt="Profile Photo" class="rounded-circle shadow-sm border border-3 border-white object-fit-cover" style="width: 110px; height: 110px; cursor: pointer; object-fit: cover;">                        {% else %}
+                        <div id="avatar-preview-placeholder" class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold shadow-sm border border-3 border-white" style="width: 110px; height: 110px; font-size: 34px; cursor: pointer;">
+                            {{ expert_profile.user.first_name|slice:":1" }}{{ expert_profile.user.last_name|slice:":1" }}
                         </div>
+                        <!-- Hidden img tag ready for live preview -->
+                        <img id="avatar-preview-img" src="" alt="Profile Photo" class="rounded-circle shadow-sm border border-3 border-white object-fit-cover d-none" style="width: 110px; height: 110px; cursor: pointer; object-fit: cover;"> {% endif %}
+
+                        <!-- Floating '+' Button Badge -->
+                        <label for="id_profile_picture" class="btn btn-primary rounded-circle position-absolute bottom-0 end-0 p-0 d-flex align-items-center justify-content-center shadow" style="width: 34px; height: 34px; transform: translate(4px, 4px); cursor: pointer;" title="Upload Profile Picture">
+                            <i class="fa-solid fa-plus fs-6 text-white"></i>
+                        </label>
                     </div>
-                    {% if form.profile_picture.errors %}
-                    <div class="text-danger small mt-1">{{ form.profile_picture.errors|striptags }}</div>
-                    {% endif %}
+
+                    <small class="text-muted mt-2">Click photo or <strong>+</strong> to change your avatar</small>
                 </div>
 
                 <div class="row mb-3">
                     <div class="col-md-6">
-                        <label class="form-label fw-semibold">First Name</label>
-                        {{ form.first_name }}
-                        {% if form.first_name.errors %}
-                        <div class="text-danger small mt-1">{{ form.first_name.errors|striptags }}</div>
-                        {% endif %}
+                        <label class="form-label fw-semibold">First Name</label> {{ form.first_name }}
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label fw-semibold">Last Name</label>
-                        {{ form.last_name }}
-                        {% if form.last_name.errors %}
-                        <div class="text-danger small mt-1">{{ form.last_name.errors|striptags }}</div>
-                        {% endif %}
+                        <label class="form-label fw-semibold">Last Name</label> {{ form.last_name }}
                     </div>
                 </div>
 
                 <div class="row mb-3">
                     <div class="col-md-6">
-                        <label class="form-label fw-semibold">Date of Birth</label>
-                        {{ form.date_of_birth }}
-                        {% if form.date_of_birth.errors %}
-                        <div class="text-danger small mt-1">{{ form.date_of_birth.errors|striptags }}</div>
-                        {% endif %}
+                        <label class="form-label fw-semibold">Date of Birth</label> {{ form.date_of_birth }}
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label fw-semibold">WhatsApp Number (Emergency / Contact)</label>
-                        {{ form.whatsapp_number }}
-                        {% if form.whatsapp_number.errors %}
-                        <div class="text-danger small mt-1">{{ form.whatsapp_number.errors|striptags }}</div>
-                        {% endif %}
+                        <label class="form-label fw-semibold">WhatsApp Number (Contact / Alerts)</label> {{ form.whatsapp_number }}
                     </div>
                 </div>
 
-                <!-- PROFESSIONAL CREDENTIALS SECTION -->
+                <!-- 2. PROFESSIONAL CREDENTIALS -->
                 <h5 class="fw-bold text-secondary mb-3 mt-4 border-bottom pb-2">Professional Credentials</h5>
 
-                <!-- Consultation Fee Field -->
                 <div class="card bg-light border-primary border-opacity-25 p-3 mb-3">
                     <label class="form-label fw-bold text-success fs-6">
                         <i class="fa-solid fa-indian-rupee-sign me-1"></i> Hourly Consultation Fee (₹)
-                    </label>
-                    {{ form.hourly_rate }}
-                    {% if form.hourly_rate.errors %}
-                    <div class="text-danger small mt-1">{{ form.hourly_rate.errors|striptags }}</div>
-                    {% endif %}
-                    <small class="text-muted mt-1">This rate applies to all newly requested slots.</small>
+                    </label> {{ form.hourly_rate }}
+                    <small class="text-muted mt-1">This rate applies to all newly created schedule slots.</small>
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label fw-semibold">Highest Qualification</label>
-                    {{ form.qualification }}
-                    {% if form.qualification.errors %}
-                    <div class="text-danger small mt-1">{{ form.qualification.errors|striptags }}</div>
-                    {% endif %}
+                    <label class="form-label fw-semibold">Highest Qualification</label> {{ form.qualification }}
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label fw-semibold">Years of Experience</label>
-                    {{ form.experience_years }}
-                    {% if form.experience_years.errors %}
-                    <div class="text-danger small mt-1">{{ form.experience_years.errors|striptags }}</div>
-                    {% endif %}
+                    <label class="form-label fw-semibold">Years of Experience</label> {{ form.experience_years }}
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label fw-semibold">Professional Bio</label>
-                    {{ form.bio }}
-                    {% if form.bio.errors %}
-                    <div class="text-danger small mt-1">{{ form.bio.errors|striptags }}</div>
-                    {% endif %}
+                    <label class="form-label fw-semibold">Professional Bio</label> {{ form.bio }}
                 </div>
 
-                <!-- DOCUMENTS UPLOAD SECTION -->
+                <!-- 3. DOCUMENTS & CERTIFICATES -->
                 <h5 class="fw-bold text-secondary mb-3 mt-4 border-bottom pb-2">Documents & Credentials</h5>
 
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold"><i class="fa-solid fa-file-pdf me-1 text-danger"></i> Upload Resume (CV)</label>
-                        {{ form.resume }}
-                        {% if form.instance.resume %}
-                            <small class="d-block mt-1 text-muted">Current: <a href="{{ form.instance.resume.url }}" target="_blank">View Resume</a></small>
-                        {% endif %}
-                        {% if form.resume.errors %}
-                        <div class="text-danger small mt-1">{{ form.resume.errors|striptags }}</div>
-                        {% endif %}
+                <!-- Resume Section with Delete Option -->
+                <div class="mb-4">
+                    <label class="form-label fw-semibold"><i class="fa-solid fa-file-pdf me-1 text-danger"></i> Upload Resume (CV)</label> {{ form.resume }} {% if expert_profile.resume %}
+                    <div class="d-flex align-items-center justify-content-between p-2 mt-2 bg-light border rounded">
+                        <span class="small text-truncate">
+                                <i class="fa-solid fa-file-lines text-primary me-1"></i>
+                                <a href="{{ expert_profile.resume.url }}" target="_blank" class="fw-semibold text-decoration-none">View Current Resume</a>
+                            </span>
+                        <a href="{% url 'accounts:delete_resume' %}" onclick="return confirm('Are you sure you want to delete your current resume?');" class="btn btn-outline-danger btn-sm py-0 px-2">
+                            <i class="fa-solid fa-trash-can me-1"></i> Remove
+                        </a>
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold"><i class="fa-solid fa-certificate me-1 text-warning"></i> Upload Certificate / Degree</label>
-                        {{ form.certificate }}
-                        {% if form.instance.certificate %}
-                            <small class="d-block mt-1 text-muted">Current: <a href="{{ form.instance.certificate.url }}" target="_blank">View Certificate</a></small>
-                        {% endif %}
-                        {% if form.certificate.errors %}
-                        <div class="text-danger small mt-1">{{ form.certificate.errors|striptags }}</div>
-                        {% endif %}
-                    </div>
+                    {% endif %}
                 </div>
 
-                <!-- SOCIAL MEDIA LINKS SECTION -->
+                <!-- Multiple Certificates Section with Add Row & Delete Options -->
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <label class="form-label fw-semibold m-0">
+                            <i class="fa-solid fa-certificate me-1 text-warning"></i> Certificates & Degrees
+                        </label>
+                        <button type="button" class="btn btn-outline-primary btn-sm" id="btn-add-cert-row">
+                            <i class="fa-solid fa-plus me-1"></i> Add Another Certificate
+                        </button>
+                    </div>
+
+                    <!-- List Already Uploaded Certificates -->
+                    {% if expert_profile.certificates.exists %}
+                    <div class="mb-3">
+                        <small class="fw-bold text-muted d-block mb-1">Uploaded Certificates:</small>
+                        <div class="d-flex flex-column gap-2">
+                            {% for cert in expert_profile.certificates.all %}
+                            <div class="d-flex align-items-center justify-content-between p-2 bg-light border rounded">
+                                <div class="small text-truncate">
+                                    <i class="fa-solid fa-file-circle-check text-success me-2"></i>
+                                    <a href="{{ cert.file.url }}" target="_blank" class="text-decoration-none fw-semibold">Certificate #{{ forloop.counter }}</a>
+                                    <span class="text-muted ms-2">({{ cert.uploaded_at|date:"M d, Y" }})</span>
+                                </div>
+                                <a href="{% url 'accounts:delete_certificate' cert.id %}" onclick="return confirm('Delete this certificate permanently?');" class="btn btn-outline-danger btn-sm py-0 px-2" title="Delete Certificate">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </a>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Dynamic Input Container for Adding Certificates -->
+                    <div id="certificate-inputs-container" class="d-flex flex-column gap-2">
+                        <div class="input-group">
+                            <input type="file" name="certificates" class="form-control cert-input" accept=".pdf,.jpg,.jpeg,.png">
+                        </div>
+                    </div>
+                    <small class="text-muted d-block mt-1">Upload files in PDF, PNG, or JPG format.</small>
+                </div>
+
+                <!-- 4. SOCIAL MEDIA LINKS -->
                 <h5 class="fw-bold text-secondary mb-3 mt-4 border-bottom pb-2">Social Media Profiles</h5>
 
                 <div class="mb-3">
-                    <label class="form-label fw-semibold"><i class="fa-brands fa-linkedin text-primary me-1"></i> LinkedIn Profile URL</label>
-                    {{ form.linkedin_url }}
-                    {% if form.linkedin_url.errors %}
-                    <div class="text-danger small mt-1">{{ form.linkedin_url.errors|striptags }}</div>
-                    {% endif %}
+                    <label class="form-label fw-semibold"><i class="fa-brands fa-linkedin text-primary me-1"></i> LinkedIn Profile URL</label> {{ form.linkedin_url }}
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label fw-semibold"><i class="fa-brands fa-instagram text-danger me-1"></i> Instagram Profile URL</label>
-                    {{ form.instagram_url }}
-                    {% if form.instagram_url.errors %}
-                    <div class="text-danger small mt-1">{{ form.instagram_url.errors|striptags }}</div>
-                    {% endif %}
+                    <label class="form-label fw-semibold"><i class="fa-brands fa-instagram text-danger me-1"></i> Instagram Profile URL</label> {{ form.instagram_url }}
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label fw-semibold"><i class="fa-brands fa-facebook text-primary me-1"></i> Facebook Profile URL</label>
-                    {{ form.facebook_url }}
-                    {% if form.facebook_url.errors %}
-                    <div class="text-danger small mt-1">{{ form.facebook_url.errors|striptags }}</div>
-                    {% endif %}
+                    <label class="form-label fw-semibold"><i class="fa-brands fa-facebook text-primary me-1"></i> Facebook Profile URL</label> {{ form.facebook_url }}
+                </div>
+
+                <!-- 5. WHATSAPP SHARING CONSENT CHECKBOX -->
+                <div class="card border-0 bg-light p-3 my-4">
+                    <div class="form-check form-switch d-flex align-items-center gap-2">
+                        {{ form.share_whatsapp_with_clients }}
+                        <label class="form-check-label fw-semibold text-dark m-0" for="{{ form.share_whatsapp_with_clients.id_for_label }}">
+                            <i class="fa-brands fa-whatsapp text-success fs-5 me-1 align-middle"></i>
+                            Share WhatsApp number with clients/users after booking confirmation
+                        </label>
+                    </div>
+                    <small class="text-muted ps-4 ms-1 d-block mt-1">If enabled, booked clients will receive your WhatsApp number to coordinate sessions.</small>
                 </div>
 
                 <!-- SUBMIT BUTTON -->
@@ -192,4 +215,189 @@
         </div>
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const dataCard = document.getElementById('profile-data-card');
+        const progressBar = document.getElementById('completion-progress-bar');
+        const progressText = document.getElementById('completion-text');
+        const badgeContainer = document.getElementById('verified-badge-container');
+        const instructionText = document.getElementById('profile-instruction-text');
+        const certContainer = document.getElementById('certificate-inputs-container');
+        const btnAddCertRow = document.getElementById('btn-add-cert-row');
+
+        // Profile Picture Elements
+        const avatarImg = document.getElementById('avatar-preview-img');
+        const avatarPlaceholder = document.getElementById('avatar-preview-placeholder');
+        const fileInput = document.getElementById('id_profile_picture');
+
+        const hasExistingProfilePic = dataCard ? dataCard.dataset.hasPic === 'true' : false;
+        const hasExistingResume = dataCard ? dataCard.dataset.hasResume === 'true' : false;
+        const hasExistingCertificate = dataCard ? dataCard.dataset.hasCert === 'true' : false;
+
+        // Interactive Avatar Click
+        if (avatarImg) {
+            avatarImg.addEventListener('click', () => fileInput.click());
+        }
+        if (avatarPlaceholder) {
+            avatarPlaceholder.addEventListener('click', () => fileInput.click());
+        }
+
+        // Live Avatar Preview on file change
+        if (fileInput) {
+            fileInput.addEventListener('change', function() {
+                if (this.files && this.files[0]) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        if (avatarPlaceholder) {
+                            avatarPlaceholder.classList.add('d-none');
+                        }
+                        avatarImg.src = e.target.result;
+                        avatarImg.classList.remove('d-none');
+                    };
+                    reader.readAsDataURL(this.files[0]);
+                }
+                calculateLiveScore();
+            });
+        }
+
+        // Dynamic Row Addition for Certificates
+        if (btnAddCertRow && certContainer) {
+            btnAddCertRow.addEventListener('click', function() {
+                const newRow = document.createElement('div');
+                newRow.className = 'input-group mt-2';
+                newRow.innerHTML = `
+                <input type="file" name="certificates" class="form-control cert-input" accept=".pdf,.jpg,.jpeg,.png">
+                <button type="button" class="btn btn-outline-danger btn-remove-cert-row">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            `;
+                certContainer.appendChild(newRow);
+                bindEvents(newRow);
+            });
+
+            certContainer.addEventListener('click', function(e) {
+                if (e.target.closest('.btn-remove-cert-row')) {
+                    const row = e.target.closest('.input-group');
+                    row.remove();
+                    calculateLiveScore();
+                }
+            });
+        }
+
+        function getVal(name) {
+            const el = document.querySelector(`[name="${name}"]`) || document.getElementById(`id_${name}`);
+            return el ? el.value.trim() : '';
+        }
+
+        function checkFile(name, hasExisting) {
+            const el = document.querySelector(`[name="${name}"]`) || document.getElementById(`id_${name}`);
+            const hasNew = Boolean(el && el.files && el.files.length > 0);
+            return hasNew || Boolean(hasExisting);
+        }
+
+        function checkAnyCertInput() {
+            if (hasExistingCertificate) return true;
+            const certInputs = document.querySelectorAll('.cert-input');
+            for (let input of certInputs) {
+                if (input.files && input.files.length > 0) return true;
+            }
+            return false;
+        }
+
+        function calculateLiveScore() {
+            const nameValid = Boolean(getVal('first_name') && getVal('last_name'));
+            const picValid = checkFile('profile_picture', hasExistingProfilePic);
+            const bioValid = Boolean(getVal('bio').length > 0);
+            const qualValid = Boolean(getVal('qualification').length > 0);
+            const exp = getVal('experience_years');
+            const expValid = Boolean(exp !== '' && !isNaN(exp) && parseInt(exp, 10) >= 0);
+            const rate = parseFloat(getVal('hourly_rate'));
+            const rateValid = Boolean(!isNaN(rate) && rate > 0);
+            const resumeValid = checkFile('resume', hasExistingResume);
+            const certValid = checkAnyCertInput();
+            const contactValid = Boolean(getVal('whatsapp_number').length >= 7);
+            const socialValid = Boolean(getVal('linkedin_url') || getVal('instagram_url') || getVal('facebook_url'));
+
+            const checks = [
+                nameValid,
+                picValid,
+                bioValid,
+                qualValid,
+                expValid,
+                rateValid,
+                resumeValid,
+                certValid,
+                contactValid,
+                socialValid
+            ];
+
+            const completedCount = checks.filter(Boolean).length;
+            const score = Math.round((completedCount / checks.length) * 100);
+
+            updateUI(score);
+        }
+
+        function updateUI(score) {
+            if (progressBar) {
+                progressBar.style.width = score + '%';
+                progressBar.setAttribute('aria-valuenow', score);
+            }
+
+            if (progressText) {
+                progressText.textContent = score + '% Complete';
+            }
+
+            if (score === 100) {
+                if (instructionText) {
+                    instructionText.classList.add('d-none');
+                }
+
+                if (progressBar) {
+                    progressBar.classList.remove('bg-primary');
+                    progressBar.classList.add('bg-success');
+                }
+                if (progressText) {
+                    progressText.classList.remove('text-primary');
+                    progressText.classList.add('text-success');
+                }
+                if (badgeContainer) {
+                    badgeContainer.innerHTML = '<div class="alert alert-success d-flex align-items-center mb-0 py-2 border-0 shadow-sm" role="alert">' +
+                        '<i class="fa-solid fa-circle-check fs-4 me-2 text-success"></i>' +
+                        '<div><strong>Verified Expert by Adwise</strong>' +
+                        '<div class="small text-muted">Your profile is 100% complete and fully verified for clients to book.</div>' +
+                        '</div></div>';
+                }
+            } else {
+                if (instructionText) {
+                    instructionText.classList.remove('d-none');
+                }
+
+                if (progressBar) {
+                    progressBar.classList.remove('bg-success');
+                    progressBar.classList.add('bg-primary');
+                }
+                if (progressText) {
+                    progressText.classList.remove('text-success');
+                    progressText.classList.add('text-primary');
+                }
+                if (badgeContainer) {
+                    badgeContainer.innerHTML = '<small class="text-muted d-block">' +
+                        '<i class="fa-solid fa-circle-info me-1"></i> Complete all personal, credential, document, and contact fields to get the <strong>Verified Expert</strong> badge.' +
+                        '</small>';
+                }
+            }
+        }
+
+        function bindEvents(parent) {
+            parent.querySelectorAll('input, textarea, select').forEach(function(el) {
+                el.addEventListener('input', calculateLiveScore);
+                el.addEventListener('change', calculateLiveScore);
+            });
+        }
+
+        bindEvents(document);
+        calculateLiveScore();
+    });
+</script>
 {% endblock %}

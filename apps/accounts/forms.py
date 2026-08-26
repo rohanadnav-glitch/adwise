@@ -538,52 +538,67 @@ class LoginForm(forms.Form):
 
 
 class ExpertProfileUpdateForm(forms.ModelForm):
-    first_name = forms.CharField(max_length=150, widget=forms.TextInput(attrs={'class': 'form-control'}))
-    last_name = forms.CharField(max_length=150, widget=forms.TextInput(attrs={'class': 'form-control'}))
-    date_of_birth = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}))
-
-    hourly_rate = forms.IntegerField(
-        min_value=100,
-        max_value=50000,
-        widget=forms.NumberInput(attrs={'class': 'form-control', 'step': '1', 'id': 'id_hourly_rate'})
+    first_name = forms.CharField(
+        max_length=150, 
+        required=True, 
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'First Name'})
+    )
+    last_name = forms.CharField(
+        max_length=150, 
+        required=True, 
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Last Name'})
+    )
+    date_of_birth = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'})
     )
 
     class Meta:
         model = ExpertProfile
         fields = [
-            'qualification', 
-            'experience_years', 
-            'hourly_rate', 
-            'bio',
             'profile_picture',
+            'whatsapp_number',
+            'hourly_rate',
+            'qualification',
+            'experience_years',
+            'bio',
             'resume',
             'certificate',
             'linkedin_url',
             'instagram_url',
             'facebook_url',
-            'whatsapp_number'
         ]
         widgets = {
-            'qualification': forms.TextInput(attrs={'class': 'form-control', 'id': 'id_qualification'}),
-            'experience_years': forms.NumberInput(attrs={'class': 'form-control', 'id': 'id_experience_years'}),
-            'bio': forms.Textarea if hasattr(forms, 'Textarea') else forms.Textarea(attrs={'class': 'form-control', 'rows': 4, 'id': 'id_bio'}),
+            'profile_picture': forms.FileInput(attrs={'class': 'form-control'}),
+            'whatsapp_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., +91 9876543210'}),
+            'hourly_rate': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Fee in ₹'}),
+            'qualification': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., M.Tech, Ph.D.'}),
+            'experience_years': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Years'}),
+            'bio': forms.Textarea(attrs={'class': 'form-control', 'rows': 4, 'placeholder': 'Tell clients about your expertise...'}),
             'resume': forms.FileInput(attrs={'class': 'form-control'}),
             'certificate': forms.FileInput(attrs={'class': 'form-control'}),
-            'linkedin_url': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://linkedin.com/in/username'}),
-            'instagram_url': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://instagram.com/username'}),
-            'facebook_url': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://facebook.com/username'}),
-            'whatsapp_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'WhatsApp / Emergency Number'}),
-            'profile_picture': forms.FileInput(attrs={'class': 'form-control'}),
+            'linkedin_url': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://linkedin.com/in/...'}),
+            'instagram_url': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://instagram.com/...'}),
+            'facebook_url': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://facebook.com/...'}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        if self.instance and self.instance.hourly_rate:
-            self.initial['hourly_rate'] = int(self.instance.hourly_rate)
-        if self.instance and self.instance.user:
+        if self.instance and self.instance.user_id:
             self.fields['first_name'].initial = self.instance.user.first_name
             self.fields['last_name'].initial = self.instance.user.last_name
             self.fields['date_of_birth'].initial = self.instance.user.date_of_birth
+
+    def save(self, commit=True):
+        profile = super().save(commit=False)
+        user = profile.user
+        user.first_name = self.cleaned_data.get('first_name', '')
+        user.last_name = self.cleaned_data.get('last_name', '')
+        user.date_of_birth = self.cleaned_data.get('date_of_birth')
+        if commit:
+            user.save()
+            profile.save()
+        return profile
 
     def clean_bio(self):
         bio = self.cleaned_data.get('bio', '').strip()
