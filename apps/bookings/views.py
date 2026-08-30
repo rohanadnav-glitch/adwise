@@ -4,17 +4,15 @@ from django.contrib import messages
 from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
-from datetime import date
 from apps.accounts.models import ExpertProfile, UserRole
 from .models import ExpertAvailability, SessionBooking, SessionStatus, Notification
 from .forms import AvailabilitySlotForm
-from .utils import send_session_email_notification
 from .models import Review
 from .forms import ReviewForm
 from django.http import JsonResponse
 from datetime import datetime, timedelta, time
 from .utils import send_session_email_notification, check_and_release_expired_locks
-from django.db.models import Count, Q, FloatField
+from django.db.models import Count, FloatField
 from django.db.models.functions import Coalesce
 
 
@@ -50,7 +48,8 @@ def schedule_manager_view(request):
         end_time_str = request.POST.get('end_time')
         chunk_minutes = request.POST.get('chunk_minutes', 'none')
 
-        now = timezone.now()
+        # FIX: Force local system time for accurate comparisons
+        now = datetime.now()
         today = now.date()
 
         if start_time_str and end_time_str:
@@ -151,6 +150,7 @@ def schedule_manager_view(request):
     }
     return render(request, 'bookings/schedule_manager.html', context)
 
+
 @login_required
 def delete_slot_view(request, slot_id):
     """ AJAX endpoint / standard view to remove availability slot """
@@ -177,16 +177,35 @@ def delete_slot_view(request, slot_id):
 
 @login_required
 def get_expert_calendar_events_api(request):
-    """ Provides JSON event feed with distinct color-coding for Requested, Accepted, and Paid states """
+    """ 
+    Provides JSON event feed with distinct color-coding.
+    FIX: Unrolls recurring slots to explicitly color past time-blocks today.
+    """
     if request.user.role != UserRole.EXPERT:
         return JsonResponse([], safe=False)
 
     expert_profile = get_object_or_404(ExpertProfile, user=request.user)
     events = []
     
-    now = timezone.now()
+    # FIX: Force local system time for accurate comparisons
+    now = datetime.now()
     today = now.date()
     current_time = now.time()
+
+    # Determine the calendar's visible date range (FullCalendar appends these automatically)
+    start_param = request.GET.get('start')
+    end_param = request.GET.get('end')
+
+    if start_param and end_param:
+        try:
+            view_start = datetime.fromisoformat(start_param.split('T')[0]).date()
+            view_end = datetime.fromisoformat(end_param.split('T')[0]).date()
+        except ValueError:
+            view_start = today - timedelta(days=30)
+            view_end = today + timedelta(days=30)
+    else:
+        view_start = today - timedelta(days=30)
+        view_end = today + timedelta(days=30)
 
     # 1. Fetch active booking slot IDs
     booked_slot_ids = SessionBooking.objects.filter(
@@ -199,18 +218,31 @@ def get_expert_calendar_events_api(request):
     
     for slot in slots:
         if slot.is_recurring and slot.day_of_week is not None:
-            fc_day = (slot.day_of_week + 1) % 7
-            events.append({
-                'id': str(slot.id),
-                'title': f"Available (Every {slot.get_day_of_week_display()})",
-                'startTime': slot.start_time.strftime('%H:%M:%S'),
-                'endTime': slot.end_time.strftime('%H:%M:%S'),
-                'daysOfWeek': [fc_day],
-                'backgroundColor': '#0d6efd',
-                'borderColor': '#0d6efd',
-                'extendedProps': {'is_booked': False, 'slot_id': slot.id, 'is_past': False}
-            })
+            # FIX: Unroll recurring slots into exact dates for accurate past/future coloring
+            current_date = view_start
+            while current_date <= view_end:
+                if current_date.weekday() == slot.day_of_week:
+                    is_past_slot = (current_date < today) or (current_date == today and slot.end_time <= current_time)
+                    title_text = "Expired Slot" if is_past_slot else f"Available (Every {slot.get_day_of_week_display()})"
+                    bg_color = "#6c757d" if is_past_slot else "#0d6efd"
+
+                    events.append({
+                        'id': f"{slot.id}_{current_date.isoformat()}",
+                        'title': title_text,
+                        'start': f"{current_date.isoformat()}T{slot.start_time.strftime('%H:%M:%S')}",
+                        'end': f"{current_date.isoformat()}T{slot.end_time.strftime('%H:%M:%S')}",
+                        'backgroundColor': bg_color,
+                        'borderColor': bg_color,
+                        'extendedProps': {
+                            'is_booked': False, 
+                            'slot_id': slot.id, 
+                            'is_past': is_past_slot
+                        }
+                    })
+                current_date += timedelta(days=1)
+                
         elif slot.date:
+            # Handle Single Date Slots
             is_past_slot = (slot.date < today) or (slot.date == today and slot.end_time <= current_time)
             title_text = "Expired Slot" if is_past_slot else "Available Slot"
             bg_color = "#6c757d" if is_past_slot else "#0d6efd"
@@ -303,7 +335,6 @@ def search_experts_view(request):
     max_fee = request.GET.get('max_fee')
     selected_date = request.GET.get('date')
 
-    # 1. Base database query with ranking annotations and availability check
     raw_experts = ExpertProfile.objects.select_related(
         'user', 'category', 'subcategory', 'state', 'district', 'city'
     ).prefetch_related('subcategories').annotate(
@@ -314,15 +345,21 @@ def search_experts_view(request):
         )
     ).filter(is_available=True)
 
-    # Apply all search filters to raw_experts
     if query:
-        raw_experts = raw_experts.filter(
-            Q(user__first_name__icontains=query) |
-            Q(user__last_name__icontains=query) |
-            Q(qualification__icontains=query) |
-            Q(bio__icontains=query) |
-            Q(subcategories__name__icontains=query)
-        ).distinct()
+        query_words = query.split()
+        for word in query_words:
+            raw_experts = raw_experts.filter(
+                Q(user__first_name__icontains=word) |
+                Q(user__last_name__icontains=word) |
+                Q(user__username__icontains=word) |             
+                Q(qualification__icontains=word) |
+                Q(bio__icontains=word) |
+                Q(category__name__icontains=word) |             
+                Q(subcategories__name__icontains=word) |
+                Q(city__name__icontains=word) |                 
+                Q(state__name__icontains=word) |                
+                Q(district__name__icontains=word)               
+            ).distinct()
 
     if category_id and category_id.isdigit():
         raw_experts = raw_experts.filter(category_id=category_id)
@@ -345,16 +382,13 @@ def search_experts_view(request):
         except ValueError:
             pass
 
-    # 5. PROFESSIONAL DATE FILTER LOGIC
     parsed_date = None
     if selected_date and selected_date != 'None':
         try:
-            # Convert string to Date object
             search_date = datetime.strptime(selected_date, '%Y-%m-%d').date()
-            target_dow = search_date.weekday() # 0 = Monday, 6 = Sunday
+            target_dow = search_date.weekday()
             parsed_date = search_date
 
-            # Filter for either a specific unbooked date OR a recurring unbooked day_of_week
             raw_experts = raw_experts.filter(
                 Q(availabilities__is_booked=False) &
                 (
@@ -365,12 +399,11 @@ def search_experts_view(request):
         except ValueError:
             pass
 
-    today = timezone.now().date()
+    # FIX: Force local system time for accurate filtering
+    today = datetime.now().date()
 
-    # 2. Python-level Post-Filtering: Keep ONLY experts who have genuinely active/future open slots
     experts = []
     for exp in raw_experts:
-        # Check if the expert has any unbooked slots that are either recurring or scheduled for today/future
         has_valid_open_slots = exp.availabilities.filter(
             is_booked=False
         ).filter(
@@ -380,7 +413,6 @@ def search_experts_view(request):
         if has_valid_open_slots:
             experts.append(exp)
 
-    # 3. Sort final list by score descending (highest ranking score first)
     experts.sort(key=lambda x: x.score, reverse=True)
 
     from apps.categories.models import Category
@@ -410,24 +442,21 @@ def expert_detail_view(request, expert_id):
         id=expert_id
     )
 
-    now = timezone.now()
+    # FIX: Force local system time
+    now = datetime.now()
     today = now.date()
 
-    # 1. Expire stale locks in batch
     check_and_release_expired_locks()
 
-    # 2. Fetch raw unbooked slots OR any recurring slots (prevents recurring slots from vanishing)
     all_raw_slots = list(ExpertAvailability.objects.filter(
         Q(expert=expert) & (Q(is_booked=False) | Q(is_recurring=True))
     ).order_by('start_time'))
 
-    # 3. Fetch active sessions with exact dates
     active_bookings = SessionBooking.objects.filter(
         expert=expert,
         status__in=[SessionStatus.REQUESTED, SessionStatus.ACCEPTED, SessionStatus.CONFIRMED]
     ).select_related('slot')
 
-    # Build lookup dictionaries keyed by (slot_id, session_date)
     confirmed_set = set()
     my_bookings_map = {}
     locked_set = set()
@@ -439,10 +468,8 @@ def expert_detail_view(request, expert_id):
 
         key = (b.slot_id, b_date)
         if request.user.is_authenticated and b.user_id == request.user.id:
-            # Save my booking states specifically
             my_bookings_map[key] = {'status': b.status, 'id': b.id}
         else:
-            # Handle other users' slots
             if b.status == SessionStatus.CONFIRMED:
                 confirmed_set.add(key)
             elif b.status in (SessionStatus.REQUESTED, SessionStatus.ACCEPTED):
@@ -450,7 +477,6 @@ def expert_detail_view(request, expert_id):
 
     available_slots = []
 
-    # 4. Resolve slots for upcoming 14 calendar days
     for day_offset in range(14):
         target_date = today + timedelta(days=day_offset)
         target_dow = target_date.weekday()
@@ -458,7 +484,6 @@ def expert_detail_view(request, expert_id):
         for slot in all_raw_slots:
             slot_key = (slot.id, target_date)
 
-            # Skip slots already confirmed and paid for by someone else
             if slot_key in confirmed_set:
                 continue
 
@@ -471,10 +496,8 @@ def expert_detail_view(request, expert_id):
             if is_valid_slot:
                 my_booking = my_bookings_map.get(slot_key)
                 
-                # Flag to check if the session time has passed today
                 is_past = (target_date == today and slot.end_time <= now.time())
                 
-                # Normally we hide past slots today, but if the current user booked it, keep it visible to show "Expired/Completed"
                 if target_date == today and slot.start_time <= now.time() and not my_booking:
                     continue
 
@@ -502,15 +525,12 @@ def expert_detail_view(request, expert_id):
 @login_required
 @transaction.atomic
 def process_payment_view(request, booking_id):
-
-    # 1. Fetch the booking without the strict 'ACCEPTED' filter
     booking = get_object_or_404(
         SessionBooking.objects.select_for_update(),
         id=booking_id,
         user=request.user
     )
 
-    # 2. Prevent 404 crashes on double-clicks or page reloads
     if booking.status == SessionStatus.CONFIRMED:
         messages.info(request, "Payment was already successful for this session.")
         return redirect('bookings:user_bookings')
@@ -519,7 +539,6 @@ def process_payment_view(request, booking_id):
         messages.error(request, "This session cannot be paid for at this time.")
         return redirect('bookings:user_bookings')
 
-    # 3. Check payment deadline
     if booking.payment_deadline and timezone.now() > booking.payment_deadline:
         booking.status = SessionStatus.EXPIRED
         booking.save(update_fields=['status'])
@@ -530,15 +549,10 @@ def process_payment_view(request, booking_id):
         import uuid
         booking.status = SessionStatus.CONFIRMED
         
-        
-        # Generate the CUSTOM internal meeting link
         unique_room_id = f"adwise-room-{booking.id}-{uuid.uuid4().hex[:8]}"
-        
-        # Point to your newly created videocall app
         booking.meeting_link = f"/call/{unique_room_id}/"
 
         slot = booking.slot
-        # Only lock out the master slot if it is a ONE-TIME slot
         if not slot.is_recurring:
             slot.is_booked = True
             slot.save(update_fields=['is_booked'])
@@ -552,7 +566,6 @@ def process_payment_view(request, booking_id):
             status=SessionStatus.REJECTED
         )
 
-        # Save both the new status and the generated meeting link
         booking.save(update_fields=['status', 'meeting_link'])
 
         create_notification(
@@ -590,18 +603,15 @@ def process_payment_view(request, booking_id):
 @login_required
 @transaction.atomic
 def request_session_view(request, slot_id=None):
-    """ Standard Single-Slot or Multi-Slot request handler with Exact Date mapping """
     if request.user.role != UserRole.USER:
         messages.error(request, "Only registered users can request expert sessions.")
         return redirect('bookings:search_experts')
 
     if request.method == 'POST':
-        # Captures values like "5" or "5|2026-08-26"
         raw_slot_data = request.POST.getlist('selected_slots')
         title = request.POST.get('request_title', '').strip()
         description = request.POST.get('request_description', '').strip()
 
-        # If accessed via single-slot form POST without checkboxes
         if not raw_slot_data and slot_id:
             passed_date = request.POST.get('slot_date')
             if passed_date:
@@ -615,13 +625,13 @@ def request_session_view(request, slot_id=None):
 
         created_count = 0
         expert_user = None
-        today = timezone.now().date()
+        
+        # FIX: Ensure accurate calculation of next week if needed
+        today = datetime.now().date()
 
         for item in raw_slot_data:
-            # Parse the ID and the specific Date sent from the frontend
             if '|' in item:
                 sid, date_str = item.split('|')
-                # Lock the exact date the user clicked on the calendar
                 target_booking_date = datetime.strptime(date_str, '%Y-%m-%d').date()
             else:
                 sid = item
@@ -634,18 +644,15 @@ def request_session_view(request, slot_id=None):
             )
             expert_user = slot.expert.user
 
-            # Fallback: If no date was passed, safely calculate the next valid occurrence
             if not target_booking_date:
                 if slot.is_recurring and slot.day_of_week is not None:
                     days_ahead = (slot.day_of_week - today.weekday()) % 7
                     target_booking_date = today + timedelta(days=days_ahead)
-                    # If time has passed today, move to next week
                     if target_booking_date < today:
                         target_booking_date += timedelta(days=7)
                 else:
                     target_booking_date = slot.date
 
-            # Ensure this exact slot + date combination isn't already requested by this user
             existing_request = SessionBooking.objects.filter(
                 user=request.user, 
                 slot=slot, 
@@ -677,7 +684,6 @@ def request_session_view(request, slot_id=None):
 
         return redirect('bookings:user_bookings')
 
-    # Default GET fallback redirect
     if slot_id:
         slot = get_object_or_404(ExpertAvailability, id=slot_id)
         return redirect('bookings:expert_detail', expert_id=slot.expert.id)
@@ -693,13 +699,10 @@ def expert_requests_view(request):
     expert = get_object_or_404(ExpertProfile, user=request.user)
     requests_list = SessionBooking.objects.filter(expert=expert).select_related('user', 'slot')
 
-    # FIX: Use local machine time instead of UTC to match your saved slots
-    from datetime import datetime
     now = datetime.now()
     today = now.date()
     current_time = now.time()
 
-    # Determine if the session time has passed for the expert's dashboard
     for req in requests_list:
         session_date = req.proposed_date or (req.slot.date if (req.slot and req.slot.date) else None)
         end_time = req.proposed_end_time or (req.slot.end_time if req.slot else None)
@@ -834,13 +837,10 @@ def user_bookings_view(request):
 
     bookings = SessionBooking.objects.filter(user=request.user).select_related('expert__user', 'slot')
     
-    # FIX: Use local machine time instead of UTC to match your saved slots
-    from datetime import datetime
     now = datetime.now()
     today = now.date()
     current_time = now.time()
 
-    # Determine if the session is completely over to unlock the review feature
     for b in bookings:
         session_date = b.proposed_date or (b.slot.date if (b.slot and b.slot.date) else None)
         end_time = b.proposed_end_time or (b.slot.end_time if b.slot else None)
