@@ -8,6 +8,8 @@ from django.utils import timezone
 from apps.categories.models import Category, SubCategory
 from apps.locations.models import State, District, City
 from django.contrib.auth import get_user_model, login, logout, authenticate
+from .models import ExpertCertificate
+import os
 from .forms import (
     UserRegistrationForm,
     ExpertStep1Form,
@@ -404,3 +406,108 @@ def toggle_expert_availability_view(request):
     # FIXED: Used .get() for the META dictionary
     return redirect(request.META.get('HTTP_REFERER') or 'accounts:expert_dashboard')
 
+@login_required
+def edit_expert_profile(request):
+    """
+    Handles viewing and updating expert profile details, 
+    dynamic multiple certificates upload, and field validation.
+    """
+    expert_profile = getattr(request.user, 'expert_profile', None)
+    if not expert_profile:
+        messages.error(request, "Expert profile not found.")
+        return redirect('accounts:home')
+
+    if request.method == 'POST':
+        # Track old file paths to clean up if overwritten
+        old_pic = expert_profile.profile_picture.path if expert_profile.profile_picture else None
+        old_resume = expert_profile.resume.path if expert_profile.resume else None
+
+        form = ExpertProfileUpdateForm(request.POST, request.FILES, instance=expert_profile)
+        if form.is_valid():
+            with transaction.atomic():
+                form.save()
+
+                # Clean up previous local file if a new one was uploaded
+                if 'profile_picture' in request.FILES and old_pic and os.path.isfile(old_pic):
+                    try:
+                        os.remove(old_pic)
+                    except OSError:
+                        pass
+
+                if 'resume' in request.FILES and old_resume and os.path.isfile(old_resume):
+                    try:
+                        os.remove(old_resume)
+                    except OSError:
+                        pass
+
+                # Process dynamically uploaded multiple certificates
+                certificate_files = request.FILES.getlist('certificates')
+                for cert_file in certificate_files:
+                    if cert_file:
+                        ExpertCertificate.objects.create(
+                            expert=expert_profile, 
+                            file=cert_file
+                        )
+
+            messages.success(request, "Profile and credentials updated successfully!")
+            return redirect('accounts:edit_expert_profile')
+        else:
+            messages.error(request, "Please correct the highlighted errors below.")
+    else:
+        form = ExpertProfileUpdateForm(instance=expert_profile)
+
+    return render(request, 'accounts/edit_expert_profile.html', {
+        'form': form,
+        'expert_profile': expert_profile,
+    })
+
+
+@login_required
+def delete_certificate(request, cert_id):
+    """
+    Deletes an individual certificate from the database and removes the file from disk.
+    """
+    expert_profile = getattr(request.user, 'expert_profile', None)
+    if not expert_profile:
+        messages.error(request, "Unauthorized access.")
+        return redirect('accounts:home')
+
+    cert = get_object_or_404(ExpertCertificate, id=cert_id, expert=expert_profile)
+    
+    # Delete the physical file from media storage
+    if cert.file and os.path.isfile(cert.file.path):
+        try:
+            os.remove(cert.file.path)
+        except OSError:
+            pass
+
+    cert.delete()
+    messages.success(request, "Certificate removed successfully.")
+    return redirect('accounts:edit_expert_profile')
+
+
+@login_required
+def delete_resume(request):
+    """
+    Removes the uploaded resume from the expert profile and deletes the file from disk.
+    """
+    expert_profile = getattr(request.user, 'expert_profile', None)
+    if not expert_profile:
+        messages.error(request, "Unauthorized access.")
+        return redirect('accounts:home')
+
+    if expert_profile.resume:
+        # Delete physical file from storage
+        if os.path.isfile(expert_profile.resume.path):
+            try:
+                os.remove(expert_profile.resume.path)
+            except OSError:
+                pass
+
+        expert_profile.resume = None
+        expert_profile.save(update_fields=['resume'])
+        messages.success(request, "Resume removed successfully.")
+    else:
+        messages.info(request, "No resume attached to remove.")
+
+    return redirect('accounts:edit_expert_profile')
